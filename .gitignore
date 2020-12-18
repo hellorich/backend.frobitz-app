@@ -1,2 +1,6 @@
+# Ignore file system
+.DS_Store
+
 # Ignore wp-config.php
 wp-config.php
+/vendor/
