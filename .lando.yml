@@ -7,3 +7,6 @@ config:
   webroot: app
   database: mariadb
   xdebug: false
+tooling:
+  wp:
+    service: appserver
