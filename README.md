@@ -12,6 +12,9 @@ A tooling route is set in the Lando config so Wordpress CLI can be used inside t
 
 ## Production environment
 
+- SpinupWP 
+- Linode
+
 ### Wordpress CLI
 
 You can run commands on the production server using Wordpress CLI's ssh capabilities. The prefix command is as follows and requires valid SSH access is set up.
@@ -19,5 +22,3 @@ You can run commands on the production server using Wordpress CLI's ssh capabili
 ```
 wp --ssh=[username]@[servername][path/to/wordpress/root]
 ```
-
-- SpinupWP 
