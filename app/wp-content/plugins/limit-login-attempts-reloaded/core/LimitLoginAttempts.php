@@ -30,7 +30,7 @@ class Limit_Login_Attempts {
 		'cookies'            => true,
 
 		/* Notify on lockout. Values: '', 'log', 'email', 'log,email' */
-		'lockout_notify'     => 'log,email',
+		'lockout_notify'     => 'email',
 
 		/* If notify by email, do so after this number of lockouts */
 		'notify_email_after' => 3,
@@ -51,6 +51,11 @@ class Limit_Login_Attempts {
 	* @var string
 	*/
 	private $_options_page_slug = 'limit-login-attempts';
+
+	/**
+	 * @var string
+	 */
+	private $_welcome_page_slug = 'llar-welcome';
 
 	/**
 	* Errors messages
@@ -95,7 +100,10 @@ class Limit_Login_Attempts {
 		add_filter( 'limit_login_blacklist_usernames', array( $this, 'check_blacklist_usernames' ), 10, 2 );
 
 		add_filter( 'illegal_user_logins', array( $this, 'register_user_blacklist' ), 999 );
-		add_action( 'admin_notices', array( $this, 'show_enable_notify_notice' ) );
+
+		// TODO: Temporary turn off the holiday warning.
+		//add_action( 'admin_notices', array( $this, 'show_enable_notify_notice' ) );
+
 		add_action( 'admin_notices', array( $this, 'show_leave_review_notice' ) );
 		add_action( 'wp_ajax_dismiss_review_notice', array( $this, 'dismiss_review_notice_callback' ) );
 		add_action( 'wp_ajax_dismiss_notify_notice', array( $this, 'dismiss_notify_notice_callback' ) );
@@ -110,7 +118,40 @@ class Limit_Login_Attempts {
 		add_action( 'wp_ajax_app_acl_remove_rule', array( $this, 'app_acl_remove_rule_callback' ));
 
 		add_action( 'admin_print_scripts-settings_page_limit-login-attempts', array( $this, 'load_admin_scripts' ) );
+
+		add_action( 'admin_init', array( $this, 'welcome_page_redirect' ), 9999 );
+		add_action( 'admin_head', array( $this, 'welcome_page_hide_menu' ) );
+
+		register_activation_hook( LLA_PLUGIN_FILE, array( $this, 'activation' ) );
 	}
+
+	/**
+	 * Runs when the plugin is activated
+	 */
+	public function activation() {
+
+		set_transient( 'llar_welcome_redirect', true, 30 );
+	}
+
+	/**
+	 * Redirect to Welcome page after installed
+	 */
+	public function welcome_page_redirect() {
+
+	    if( ! get_transient( 'llar_welcome_redirect' ) || isset( $_GET['activate-multi'] ) || is_network_admin() ) {
+	        return;
+        }
+
+		delete_transient( 'llar_welcome_redirect' );
+
+	    wp_redirect( admin_url( 'index.php?page=' . $this->_welcome_page_slug ) );
+	    exit();
+    }
+
+    public function welcome_page_hide_menu() {
+
+		remove_submenu_page( 'index.php', $this->_welcome_page_slug );
+    }
 
 	/**
 	* Hook 'plugins_loaded'
@@ -190,16 +231,6 @@ class Limit_Login_Attempts {
 		add_action('wp_ajax_limit-login-unlock', array( $this, 'ajax_unlock' ) );
 
 		add_filter( 'plugin_action_links_' . LLA_PLUGIN_BASENAME, array( $this, 'add_action_links' ) );
-
-		/**
-		 * Transform setup link to setup code.
-		 */
-		if( ( $setup_link = $this->get_option( 'app_setup_link' ) ) && empty( $this->get_option( 'app_setup_code' ) ) ) {
-
-			$setup_link = str_replace( array( 'http://', 'https://' ), '', $setup_link );
-			$this->update_option( 'app_setup_code', strrev( $setup_link ) );
-			$this->delete_option( 'app_setup_link' );
-        }
 	}
 
 	public function add_action_links( $actions ) {
@@ -498,6 +529,13 @@ class Limit_Login_Attempts {
 
 		wp_enqueue_style( 'lla-main', LLA_PLUGIN_URL . 'assets/css/limit-login-attempts.css', array(), $plugin_data['Version'] );
 		wp_enqueue_script( 'lla-main', LLA_PLUGIN_URL . 'assets/js/limit-login-attempts.js', array(), $plugin_data['Version'] );
+
+		if( !empty( $_REQUEST['page'] ) && $_REQUEST['page'] === $this->_welcome_page_slug ) {
+
+			wp_enqueue_style( 'lla-jquery-confirm', LLA_PLUGIN_URL . 'assets/css/jquery-confirm.min.css' );
+			wp_enqueue_script( 'lla-jquery-confirm', LLA_PLUGIN_URL . 'assets/js/jquery-confirm.min.js' );
+        }
+
 	}
 
 	/**
@@ -511,6 +549,14 @@ class Limit_Login_Attempts {
 	public function admin_menu()
 	{
 		add_options_page( 'Limit Login Attempts', 'Limit Login Attempts', 'manage_options', $this->_options_page_slug, array( $this, 'options_page' ) );
+
+		add_dashboard_page(
+            'Welcome to Limit Login Attempts Reloaded',
+            'Limit Login Attempts Welcome',
+            'manage_options',
+            $this->_welcome_page_slug,
+            array( $this, 'welcome_page' )
+        );
 	}
 
 	/**
@@ -792,32 +838,21 @@ class Limit_Login_Attempts {
 	 * @return bool|void
 	 */
 	public function notify( $user ) {
-		$args = explode( ',', $this->get_option( 'lockout_notify' ) );
 
 		if( is_object( $user ) ) {
             return false;
 		}
 
-		// TODO: Maybe temporarily
-		if(!in_array('log', $args)) {
-		    $args[] = 'log';
-        }
+		$this->notify_log( $user );
+
+		$args = explode( ',', $this->get_option( 'lockout_notify' ) );
 
 		if ( empty( $args ) ) {
 			return;
 		}
 
-		foreach ( $args as $mode ) {
-
-		    $mode = trim( $mode );
-
-			if( $mode === 'log' ) {
-				$this->notify_log( $user );
-			}
-
-		    if( $mode === 'email' ) {
-				$this->notify_email( $user );
-            }
+		if( in_array( 'email', $args ) ) {
+			$this->notify_email( $user );
 		}
 	}
 
@@ -894,8 +929,10 @@ class Limit_Login_Attempts {
         $message = __( '<p>Hello%1$s,</p>' .
                        '<p>%2$d failed login attempts (%3$d lockout(s)) from IP <b>%4$s</b> and it was blocked for %5$s<br>' .
                        'Last user attempted: <b>%6$s</b></p>' .
-                       '<p>Under Attack? <a href="%7$s" target="_blank">Learn more</a> about brute force attacks and how to enhance your protection.<br>' .
-                       '<a href="%8$s" target="_blank">Unsubscribe</a> from these notifications.</p>', 'limit-login-attempts-reloaded' );
+                       '<p>Under Attack? Learn more about <a href="%7$s" target="_blank">brute force attacks</a>. ' .
+                       'Have Questions? Visit our <a href="%8$s" target="_blank">help section</a>.<br>' .
+                       '<a href="%9$s">Unsubscribe</a> from these notifications.</p>' .
+                       "<hr><p>This notification was sent automatically via <b>Limit Login Attempts Reloaded Plugin</b>.</p>", 'limit-login-attempts-reloaded' );
 
         $message = sprintf(
             $message,
@@ -906,6 +943,7 @@ class Limit_Login_Attempts {
             $when,
 			$user,
 			'https://www.limitloginattempts.com/info.php?from=plugin-lockout-email',
+			'https://www.limitloginattempts.com/resources/?from=plugin-lockout-email',
             admin_url( 'options-general.php?page=limit-login-attempts&tab=settings' )
         );
 
@@ -1524,9 +1562,7 @@ class Limit_Login_Attempts {
                 $this->update_option('trusted_ip_origins', $trusted_ip_origins );
 
                 $notify_methods = array();
-                if( isset( $_POST[ 'lockout_notify_log' ] ) ) {
-                    $notify_methods[] = 'log';
-                }
+
                 if( isset( $_POST[ 'lockout_notify_email' ] ) ) {
                     $notify_methods[] = 'email';
                 }
@@ -1565,6 +1601,14 @@ class Limit_Login_Attempts {
 
 		include_once( LLA_PLUGIN_DIR . '/views/options-page.php' );
 	}
+
+	/**
+	 * Render Welcome page
+	 */
+	public function welcome_page() {
+
+		include_once( LLA_PLUGIN_DIR . '/views/welcome-page.php' );
+    }
 
 	public function ajax_unlock()
 	{
@@ -1636,7 +1680,9 @@ class Limit_Login_Attempts {
 			@setcookie('llar_review_notice_shown', '', time() - 3600, '/');
 		}
 
-        if ( !current_user_can('manage_options') || $this->get_option('review_notice_shown') || $screen->parent_base === 'edit' ) return;
+        if ( !current_user_can('manage_options') ||
+            $this->get_option('review_notice_shown') ||
+            !in_array( $screen->base, array( 'dashboard', 'plugins', 'settings_page_limit-login-attempts' ) ) ) return;
 
         $activation_timestamp = $this->get_option('activation_timestamp');
 
@@ -1883,9 +1929,9 @@ class Limit_Login_Attempts {
 
 		check_ajax_referer('llar-action', 'sec');
 
-		if( !empty( $_POST['link'] ) ) {
+		if( !empty( $_POST['code'] ) ) {
 
-			$setup_code = sanitize_text_field( $_POST['link'] );
+			$setup_code = sanitize_text_field( $_POST['code'] );
 			$link = strrev( $setup_code );
 
 			if( $setup_result = LLAR_App::setup( $link ) ) {
