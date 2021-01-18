@@ -1,5 +1,11 @@
 # Change Log
 
+## 0.9.2
+
+### Bug Fixes
+
+- The preview template loader was fixed for cases where the global $post is not set, which previously lead to PHP errors.
+
 ## 0.9.1
 
 - Removed a new internal taxonomy from the GraphQL schema which was unintentionally added in the last release.
