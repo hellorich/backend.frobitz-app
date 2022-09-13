@@ -4,7 +4,7 @@
 
 - Lando / Docker installation
 - Multisite set up (to convert to WP-CLI)
-- Plugins  (to convert to WP-CLI)
+- Plugins (to convert to WP-CLI)
 
 ### Wordpress CLI
 

@@ -1,12 +1,16 @@
 name: frobitz-app
 recipe: wordpress
 config:
-  php: '7.4'
-  composer_version: '2.0.3'
+  php: '8.0'
+  composer_version: '2.4.1'
   via: apache
   webroot: app
-  database: mariadb
-  xdebug: false
+  database: mysql
+  xdebug: true
 tooling:
   wp:
     service: appserver
+services:
+  appserver:
+    run: 
+      - scripts/build.sh
