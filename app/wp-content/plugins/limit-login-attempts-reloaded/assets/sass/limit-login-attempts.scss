@@ -106,6 +106,37 @@
         background-color: #f9f9f9;
       }
     }
+    .llar-table-header {
+      display: flex;
+      justify-content: space-between;
+      margin: 15px 0 5px;
+
+      h3 {
+        margin: 0;
+      }
+      .right-link {
+        line-height: 1.625;
+        a {
+          font-size: 14px;
+        }
+        .llar-tooltip {
+          text-decoration: none;
+          font-size: 12px;
+          display: inline-block;
+
+          &:before {
+            display: none;
+          }
+          &:hover {
+            &:before {
+              display: block;
+              right: 0;
+              left: auto;
+            }
+          }
+        }
+      }
+    }
     .llar-app-log-pagination {
       > a {
         font-size: 16px;
@@ -122,9 +153,28 @@
       .app-rules-col {
         flex: 0 0 49%;
 
+        h3 {
+          display: flex;
+          justify-content: space-between;
+
+          .help-link {
+            font-size: 14px;
+            font-weight: normal;
+
+            .dashicons {
+              text-decoration: none !important;
+            }
+          }
+        }
+
         .form-table {
           select {
             width: 100%;
+          }
+
+          .origin {
+            float: right;
+            opacity: 0.5;
           }
 
           .llar-app-acl-action-col {
@@ -143,6 +193,70 @@
           .llar-app-acl-remove {
             color: crimson;
             border-color: crimson;
+          }
+        }
+      }
+    }
+
+    .llar-block-country-section {
+      background-color: #fff;
+      padding: 15px;
+      border:1px solid #b9b9b9;
+      border-top: 3px solid #3c8dbc;
+
+      .llar-block-country-mode {
+        display: inline-block;
+        margin-right: 5px;
+        vertical-align: top;
+      }
+      .llar-toggle-countries-list {
+        text-decoration-style: dotted;
+        vertical-align: middle;
+        line-height: 1.6;
+      }
+      .llar-block-country-list {
+        display: flex;
+        flex-wrap: wrap;
+        max-height: 400px;
+        overflow-y: auto;
+
+        &:first-child {
+          margin-top: 0;
+        }
+
+        .llar-country {
+          flex: 0 0 10%;
+
+          label {
+            padding-bottom: 10px;
+            display: inline-block;
+          }
+        }
+
+        &.llar-all-countries-selected {
+          display: inline;
+          vertical-align: middle;
+          overflow: hidden;
+
+          .llar-country {
+            margin-bottom: 0;
+            display: inline-block;
+            margin-right: 10px;
+
+            label {
+              padding-bottom: 0;
+              white-space: nowrap;
+            }
+          }
+        }
+        &.llar-all-countries-list {
+          display: none;
+          margin: 10px 0;
+
+          &.visible {
+            display: flex;
+            border-top: 1px solid #dddada;
+            padding-top: 10px;
           }
         }
       }
@@ -356,13 +470,6 @@
   }
 }
 
-.llar-chart-wrap {
-  width: 100%;
-  max-width: 900px;
-  margin: 0 auto;
-  clear: both;
-}
-
 #llar-welcome-page {
   padding: 50px 0;
 
@@ -537,7 +644,8 @@
   }
 }
 
-.dashboard_page_llar-welcome {
+.dashboard_page_llar-welcome,
+.toplevel_page_limit-login-attempts {
   .update-nag,
   .notice {
     display: none;
@@ -562,3 +670,100 @@
   top: -2px !important;
   right: -2px !important;
 }
+
+.llar-tooltip {
+  text-decoration: underline;
+  text-decoration-style: dotted;
+  cursor: pointer;
+  position: relative;
+
+  &:before {
+    content: attr(data-text);
+    position: absolute;
+    width: 200px;
+    padding: 5px;
+    background-color: rgba(#000, 0.8);
+    color: #fff;
+    font-size: 13px;
+    top: 100%;
+    z-index: 999;
+    visibility: hidden;
+    opacity: 0;
+    transition: all .2s;
+    font-weight: 300;
+    cursor: auto;
+  }
+
+  &:hover {
+    &:before {
+      visibility: visible;
+      opacity: 1;
+    }
+  }
+}
+
+//#toplevel_page_limit-login-attempts {
+//  .wp-menu-image {
+//    &:before {
+//      content: '';
+//      background: url('../img/icon-logo-menu.png') no-repeat center center / 27px auto;
+//      display: block;
+//      position: absolute;
+//      top: 10px;
+//      left: 5px;
+//      width: 30px;
+//    }
+//  }
+//}
+#toplevel_page_limit-login-attempts {
+  .wp-menu-image.svg {
+    background-size: 25px auto !important;
+    margin-top: 7px;
+  }
+}
+
+.llar-alert-icon-animation {
+  animation-duration: 10s;
+  animation-timing-function: ease-out;
+  animation-delay: 3s;
+  animation-iteration-count: infinite;
+  animation-direction: normal;
+  animation-fill-mode: both;
+  animation-play-state: running;
+  animation-name: shake;
+}
+
+#menu-settings {
+  li {
+    position: relative;
+    .llar-alert-icon-animation {
+      position: absolute;
+      right: 5px;
+      top: 7px;
+      min-width: 15px;
+      line-height: 15px;
+      height: 15px;
+    }
+  }
+}
+
+@keyframes shake {
+  1%, 9% {
+    transform: translate3d(-1px, 0, 0);
+  }
+
+  2%, 8% {
+    transform: translate3d(2px, 0, 0);
+  }
+
+  3%, 5%, 7% {
+    transform: translate3d(-3px, 0, 0);
+  }
+
+  4%, 6% {
+    transform: translate3d(3px, 0, 0);
+  }
+}
+
+@import "dashboard-page";
+@import "admin-dashboard-widgets";

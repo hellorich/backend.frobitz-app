@@ -1,13 +1,13 @@
 <?php
 /*
 Plugin Name: Limit Login Attempts Reloaded
-Description: Limit the rate of login attempts for each IP address.
+Description: Block excessive login attempts and protect your site against brute force attacks. Simple, yet powerful tools to improve site performance.
 Author: Limit Login Attempts Reloaded
-Author URI: https://limitloginattempts.com/
+Author URI: https://www.limitloginattempts.com/
 Text Domain: limit-login-attempts-reloaded
-Version: 2.19.2
+Version: 2.25.5
 
-Copyright 2008 - 2012 Johan Eenfeldt, 2016 - 2021 Limit Login Attempts Reloaded
+Copyright 2008 - 2012 Johan Eenfeldt, 2016 - 2022 Limit Login Attempts Reloaded
 */
 
 /***************************************************************************************
@@ -34,6 +34,8 @@ $limit_login_nonempty_credentials = false; /* user and pwd nonempty */
 /***************************************************************************************
  * Include files
  **************************************************************************************/
+require_once( LLA_PLUGIN_DIR . '/lib/CidrCheck.php' );
+require_once( LLA_PLUGIN_DIR . '/core/Shortcodes.php' );
 require_once( LLA_PLUGIN_DIR . '/core/Helpers.php' );
 require_once( LLA_PLUGIN_DIR . '/core/App.php' );
 require_once( LLA_PLUGIN_DIR . '/core/LimitLoginAttempts.php' );
