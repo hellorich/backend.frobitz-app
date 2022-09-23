@@ -83,7 +83,7 @@ $has_menu_options = ( $this->user->canSortPosts($this->post_type->name) && $this
 				if ( is_super_admin() || current_user_can( $post_type_object->cap->edit_others_posts ) ) :
 					$users_opt = [
 						'hide_if_only_one_author' => false,
-						'who' => 'authors',
+						'capability' => 'edit_posts',
 						'name' => 'post_author',
 						'id' => 'post_author',
 						'class'=> 'authors',
@@ -255,6 +255,10 @@ $has_menu_options = ( $this->user->canSortPosts($this->post_type->name) && $this
 			<div class="form-control">
 				<label><?php _e( 'CSS Classes' ); ?></label>
 				<input type="text" name="np_nav_css_classes" class="np_nav_css_classes" value="" />
+			</div>
+			<div class="form-control">
+				<label><?php _e( 'Custom URL' ); ?></label>
+				<input type="text" name="np_nav_custom_url" class="np_nav_custom_url" placeholder="<?php _e('Example: #', 'wp-nested-pages'); ?>" value="" />
 			</div>
 		</div><!-- .menuoptions-left -->
 		<div class="right">

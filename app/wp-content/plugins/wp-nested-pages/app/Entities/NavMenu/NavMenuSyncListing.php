@@ -121,9 +121,16 @@ class NavMenuSyncListing extends NavMenuSync
 			'menu-item-parent-id' => $menu_parent,
 			'menu-item-xfn' => $xfn,
 			'menu-item-target' => $this->post->link_target,
-			'menu-item-description' => ' '
+			'menu-item-description' => $this->nav_menu_repo->getMenuItem($menu_item_id, 'description')
 		];
+
 		$menu = wp_update_nav_menu_item($this->id, $menu_item_id, $args);
+
+		if ( $this->post->nav_custom_url ) :
+			$url = $this->post->nav_custom_url;
+			update_post_meta( $menu, '_menu_item_url', $this->post->nav_custom_url );
+		endif;
+
 		return $menu;
 	}
 }

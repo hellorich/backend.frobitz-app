@@ -6,7 +6,7 @@ $wpml = $this->integrations->plugins->wpml->installed;
 $wpml_pages = ( $wpml && $this->integrations->plugins->wpml->isDefaultLanguage()) ? true : false;
 if ( !$wpml ) $wpml_pages = true;
 ?>
-<div class="row<?php echo $row_classes; ?>">
+<div class="row <?php echo apply_filters('nestedpages_row_css_classes', $row_classes, $this->post, $this->post_type); ?>">
 	
 	<?php if ( $this->post_type->hierarchical ) : ?>
 	<div class="child-toggle">
@@ -28,7 +28,8 @@ if ( !$wpml ) $wpml_pages = true;
 		<a href="<?php echo apply_filters('nestedpages_edit_link', get_edit_post_link(), $this->post); ?>" class="page-link page-title">
 			<span class="title">
 				<?php 
-					echo apply_filters( 'the_title', $this->post->title, $this->post->id, $view = 'nestedpages_title' ); 
+					$title = apply_filters( 'the_title', $this->post->title, $this->post->id ); 
+					echo apply_filters('nestedpages_post_title', $title, $this->post);
 					echo $this->postStates($assigned_pt);
 				?>
 			</span>
@@ -93,11 +94,7 @@ if ( !$wpml ) $wpml_pages = true;
 		</div>
 		<?php endif; ?>
 
-		<?php
-		if ( $this->integrations->plugins->yoast->installed ){
-			echo '<span class="np-seo-indicator ' . esc_html($this->post->score) . '"></span>';
-		}
-		?>
+		<?php if ( $this->integrations->plugins->yoast->installed ) echo $this->post->score; ?>
 
 		<div class="action-buttons">
 			
@@ -127,7 +124,7 @@ if ( !$wpml ) $wpml_pages = true;
 					<li>
 						<a href="<?php echo admin_url( 'edit-comments.php?p=' . get_the_id() ); ?>">
 						<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path class="primary" d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/><path d="M0 0h24v24H0z" fill="none"/></svg>
-						<?php echo sprintf(__('%i Comments', 'wp-nested-pages'), intval($comments->total_comments)); ?>
+						<?php echo sprintf(__('%d Comments', 'wp-nested-pages'), intval($comments->total_comments)); ?>
 						</a>
 					</li>
 					<?php else : $cs = 'closed'; endif; ?>
@@ -203,7 +200,7 @@ if ( !$wpml ) $wpml_pages = true;
 
 					<?php endif; ?>
 
-					<?php if ( current_user_can('edit_pages') && current_user_can('edit_posts') && $wpml_pages && in_array('clone', $this->post_type_settings->row_actions) ) : ?>
+					<?php if ( current_user_can('edit_pages') && current_user_can('edit_posts') && in_array('clone', $this->post_type_settings->row_actions) ) : ?>
 					<li>
 						<a href="#" class="clone-post" data-id="<?php echo esc_attr(get_the_id()); ?>" data-parentname="<?php esc_html_e($this->post->title); ?>">
 						<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path fill="none" d="M0 0h24v24H0z"/><path class="primary" d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm-1 4l6 6v10c0 1.1-.9 2-2 2H7.99C6.89 23 6 22.1 6 21l.01-14c0-1.1.89-2 1.99-2h7zm-1 7h5.5L14 6.5V12z"/></svg>
@@ -251,6 +248,7 @@ if ( !$wpml ) $wpml_pages = true;
 				data-timeformat="<?php echo get_option('time_format'); ?>"
 				data-ampm="<?php echo date('a', $this->post->date->datepicker); ?>"
 				data-sticky="<?php if ( in_array($this->post->id, $this->sticky_posts) ) echo 'sticky'; ?>"
+				data-custom-url="<?php echo esc_attr($this->post->nav_custom_url); ?>"
 				<?php echo $this->custom_fields_repo->dataAttributes($this->post, $this->post_type); ?>
 				>
 				<?php _e('Quick Edit', 'wp-nested-pages'); ?>
@@ -264,7 +262,9 @@ if ( !$wpml ) $wpml_pages = true;
 			if ( in_array('view', $this->post_type_settings->row_actions) ) : 
 			if ( $this->post->status == 'publish' ) : 
 			$link = apply_filters('nestedpages_view_link', get_the_permalink(), $this->post);
-			$link = ( $this->post_type->name == 'page' ) ? apply_filters('page_link', $link, $this->post->ID) : apply_filters('post_link', $link, $this->post);
+			$link = ( $this->post_type->name !== 'post' ) 
+				? apply_filters('page_link', $link, $this->post->ID, false) 
+				: apply_filters('post_link', $link, $this->post, false);
 			?>
 			<a href="<?php echo $link; ?>" class="np-btn np-view-button" target="_blank">
 				<?php echo apply_filters('nestedpages_view_link_text', __('View', 'wp-nested-pages'), $this->post); ?>

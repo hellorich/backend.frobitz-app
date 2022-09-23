@@ -16,16 +16,19 @@ class NavMenuFrontEnd
 	public function __construct()
 	{
 		$this->nav_menu_repo = new NavMenuRepository;
-		add_filter('nav_menu_link_attributes', [$this, 'attributeFilter'], 10, 3);
-		add_filter('nav_menu_item_args', [$this, 'removePrivateItems'], 10, 3);
+		add_filter('nav_menu_link_attributes', [$this, 'linkAttribute'], 10, 3);
+		add_filter('nav_menu_link_attributes', [$this, 'hrefAttribute'], 10, 3);
 	}
 
 	/**
 	* Filter the link attributes on the generated menu
 	*/
-	public function attributeFilter($atts, $item, $args)
+	public function linkAttribute($atts, $item, $args)
 	{
+		if ( get_option('nestedpages_menusync') !== 'sync' ) return $atts;
+		if ( get_option('nestedpages_disable_menu') == 'true' ) return $atts;
 		if ( $this->nav_menu_repo->getMenuID() == null ) return $atts;
+
 		if ( !isset($args->menu->term_id) ) return $atts;
 		if ( $args->menu->term_id !== $this->nav_menu_repo->getMenuID() ) return $atts;
 
@@ -35,17 +38,22 @@ class NavMenuFrontEnd
 			if ( $value == $item->object ) unset($atts[$attribute]);
 			if ( is_numeric($value) ) unset($atts[$attribute]);
 		}
-		
+	
 		return $atts;
 	}
 
 	/**
-	* Remove Private Items from the menu
+	* Add a custom link if one is set
 	*/
-	public function removePrivateItems($args, $item, $depth)
+	public function hrefAttribute($atts, $item, $args)
 	{
-		// $status = get_post_status($item->object_id);
-		// if ( $status && $status == 'private' ) $item->post_status = 'private';
-		return $args;
+		if ( get_option('nestedpages_menusync') !== 'sync' ) return $atts;
+		if ( get_option('nestedpages_disable_menu') == 'true' ) return $atts;
+		if ( $this->nav_menu_repo->getMenuID() == null ) return $atts;
+		if ( !isset($item->object_id) ) return $atts;
+		$custom_url = get_post_meta($item->object_id, '_np_nav_custom_url', true);
+		if ( !$custom_url ) return $atts;
+		$atts['href'] = $custom_url;
+		return $atts;
 	}
 }
