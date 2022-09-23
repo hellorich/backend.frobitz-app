@@ -48,11 +48,12 @@ class TimezoneEnum {
 				continue;
 			}
 			// This determines what gets set and translated - we don't translate Etc/* strings here, they are done later
-			$exists    = [
-				0 => ( isset( $zone[0] ) && $zone[0] ),
-				1 => ( isset( $zone[1] ) && $zone[1] ),
-				2 => ( isset( $zone[2] ) && $zone[2] ),
+			$exists = [
+				0 => ! empty( $zone[0] ) ? $zone[0] : null,
+				1 => ! empty( $zone[1] ) ? $zone[1] : null,
+				2 => ! empty( $zone[2] ) ? $zone[2] : null,
 			];
+
 			$exists[3] = ( $exists[0] && 'Etc' !== $zone[0] );
 			$exists[4] = ( $exists[1] && $exists[3] );
 			$exists[5] = ( $exists[2] && $exists[3] );
@@ -61,9 +62,9 @@ class TimezoneEnum {
 				'continent'   => ( $exists[0] ? $zone[0] : '' ),
 				'city'        => ( $exists[1] ? $zone[1] : '' ),
 				'subcity'     => ( $exists[2] ? $zone[2] : '' ),
-				't_continent' => ( $exists[3] ? translate( str_replace( '_', ' ', $zone[0] ), 'continents-cities' ) : '' ),
-				't_city'      => ( $exists[4] ? translate( str_replace( '_', ' ', $zone[1] ), 'continents-cities' ) : '' ),
-				't_subcity'   => ( $exists[5] ? translate( str_replace( '_', ' ', $zone[2] ), 'continents-cities' ) : '' ),
+				't_continent' => ( $exists[3] ? translate( str_replace( '_', ' ', $zone[0] ), 'wp-graphql' ) : '' ),
+				't_city'      => ( $exists[4] ? translate( str_replace( '_', ' ', $zone[1] ), 'wp-graphql' ) : '' ),
+				't_subcity'   => ( $exists[5] ? translate( str_replace( '_', ' ', $zone[2] ), 'wp-graphql' ) : '' ),
 			];
 			// phpcs:enable
 		}

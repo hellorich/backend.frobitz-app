@@ -2,12 +2,32 @@
 
 namespace WPGraphQL\Utils;
 
+use GraphQLRelay\Relay;
 use WPGraphQL\Model\Model;
 
 class Utils {
 
 	/**
-	 * Maps new input query args and sanitizes the input
+	 * Given a GraphQL Query string, return a hash
+	 *
+	 * @param string $query The Query String to hash
+	 *
+	 * @return string|null
+	 */
+	public static function get_query_id( string $query ) {
+
+		try {
+			$query_ast = \GraphQL\Language\Parser::parse( $query );
+			$query     = \GraphQL\Language\Printer::doPrint( $query_ast );
+			return md5( $query );
+		} catch ( \Exception $exception ) {
+			return null;
+		}
+
+	}
+
+	/**
+	 * Maps new input query args and sa nitizes the input
 	 *
 	 * @param mixed|array|string $args The raw query args from the GraphQL query
 	 * @param mixed|array|string $map  The mapping of where each of the args should go
@@ -27,7 +47,7 @@ class Utils {
 
 			if ( is_array( $value ) && ! empty( $value ) ) {
 				$value = array_map(
-					function( $value ) {
+					function ( $value ) {
 						if ( is_string( $value ) ) {
 							$value = sanitize_text_field( $value );
 						}
@@ -144,6 +164,7 @@ class Utils {
 			'title'      => [],
 			'checked'    => [],
 			'disabled'   => [],
+			'selected'   => [],
 		];
 
 		return [
@@ -153,6 +174,8 @@ class Utils {
 			'textarea' => $allowed_atts,
 			'iframe'   => $allowed_atts,
 			'script'   => $allowed_atts,
+			'select'   => $allowed_atts,
+			'option'   => $allowed_atts,
 			'style'    => $allowed_atts,
 			'strong'   => $allowed_atts,
 			'small'    => $allowed_atts,
@@ -182,5 +205,25 @@ class Utils {
 			'b'        => $allowed_atts,
 			'i'        => $allowed_atts,
 		];
+	}
+
+	/**
+	 * Helper function to get the WordPress database ID from a GraphQL ID type input.
+	 *
+	 * Returns false if not a valid ID.
+	 *
+	 * @param int|string $id The ID from the input args. Can be either the database ID (as either a string or int) or the global Relay ID.
+	 *
+	 * @return int|false
+	 */
+	public static function get_database_id_from_id( $id ) {
+		// If we already have the database ID, send it back as an integer.
+		if ( is_numeric( $id ) ) {
+			return absint( $id );
+		}
+
+		$id_parts = Relay::fromGlobalId( $id );
+
+		return ! empty( $id_parts['id'] ) && is_numeric( $id_parts['id'] ) ? absint( $id_parts['id'] ) : false;
 	}
 }

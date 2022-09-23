@@ -4,6 +4,10 @@ namespace WPGraphQL\Type\ObjectType;
 
 use GraphQL\Type\Definition\ResolveInfo;
 use WPGraphQL\AppContext;
+use WPGraphQL\Data\Connection\MenuConnectionResolver;
+use WPGraphQL\Data\Connection\PostObjectConnectionResolver;
+use WPGraphQL\Data\Connection\TermObjectConnectionResolver;
+use WPGraphQL\Model\MenuItem as MenuItemModel;
 
 class MenuItem {
 
@@ -18,6 +22,58 @@ class MenuItem {
 			[
 				'description' => __( 'Navigation menu items are the individual items assigned to a menu. These are rendered as the links in a navigation menu.', 'wp-graphql' ),
 				'interfaces'  => [ 'Node', 'DatabaseIdentifier' ],
+				'model'       => MenuItemModel::class,
+				'connections' => [
+					'connectedNode' => [
+						'toType'               => 'MenuItemLinkable',
+						'connectionInterfaces' => [ 'MenuItemLinkableConnection' ],
+						'description'          => __( 'Connection from MenuItem to it\'s connected node', 'wp-graphql' ),
+						'oneToOne'             => true,
+						'resolve'              => function ( MenuItemModel $menu_item, $args, AppContext $context, ResolveInfo $info ) {
+
+							if ( ! isset( $menu_item->databaseId ) ) {
+								return null;
+							}
+
+							$object_id   = (int) get_post_meta( $menu_item->databaseId, '_menu_item_object_id', true );
+							$object_type = get_post_meta( $menu_item->databaseId, '_menu_item_type', true );
+
+							$resolver = null;
+							switch ( $object_type ) {
+								// Post object
+								case 'post_type':
+									$resolver = new PostObjectConnectionResolver( $menu_item, $args, $context, $info, 'any' );
+									$resolver->set_query_arg( 'p', $object_id );
+
+									// connected objects to menu items can be any post status
+									$resolver->set_query_arg( 'post_status', 'any' );
+									break;
+
+								// Taxonomy term
+								case 'taxonomy':
+									$resolver = new TermObjectConnectionResolver( $menu_item, $args, $context, $info );
+									$resolver->set_query_arg( 'include', $object_id );
+									break;
+								default:
+									break;
+							}
+
+							return null !== $resolver ? $resolver->one_to_one()->get_connection() : null;
+
+						},
+					],
+					'menu'          => [
+						'toType'      => 'Menu',
+						'description' => __( 'The Menu a MenuItem is part of', 'wp-graphql' ),
+						'oneToOne'    => true,
+						'resolve'     => function ( MenuItemModel $menu_item, $args, $context, $info ) {
+							$resolver = new MenuConnectionResolver( $menu_item, $args, $context, $info );
+							$resolver->set_query_arg( 'include', $menu_item->menuDatabaseId );
+
+							return $resolver->one_to_one()->get_connection();
+						},
+					],
+				],
 				'fields'      => [
 					'id'               => [
 						'description' => __( 'The globally unique identifier of the nav menu item object.', 'wp-graphql' ),
@@ -65,8 +121,14 @@ class MenuItem {
 						'type'        => 'String',
 						'description' => __( 'URL or destination of the menu item.', 'wp-graphql' ),
 					],
+					// Note: this field is added to the MenuItem type instead of applied by the "UniformResourceIdentifiable" interface
+					// because a MenuItem is not identifiable by a uri, the connected resource is identifiable by the uri.
+					'uri'              => [
+						'type'        => 'String',
+						'description' => __( 'The uri of the resource the menu item links to', 'wp-graphql' ),
+					],
 					'path'             => [
-						'type'        => [ 'non_null' => 'String' ],
+						'type'        => 'String',
 						'description' => __( 'Path for the resource. Relative path for internal resources. Absolute path for external resources.', 'wp-graphql' ),
 					],
 					'isRestricted'     => [
@@ -78,16 +140,16 @@ class MenuItem {
 						'description' => __( 'Menu item order', 'wp-graphql' ),
 					],
 					'locations'        => [
-						'type' => [
-							'list_of'     => 'MenuLocationEnum',
-							'description' => __( 'The locations the menu item\'s Menu is assigned to', 'wp-graphql' ),
+						'type'        => [
+							'list_of' => 'MenuLocationEnum',
 						],
+						'description' => __( 'The locations the menu item\'s Menu is assigned to', 'wp-graphql' ),
 					],
 					'connectedObject'  => [
 						'type'              => 'MenuItemObjectUnion',
 						'deprecationReason' => __( 'Deprecated in favor of the connectedNode field', 'wp-graphql' ),
 						'description'       => __( 'The object connected to this menu item.', 'wp-graphql' ),
-						'resolve'           => function( $menu_item, array $args, AppContext $context, $info ) {
+						'resolve'           => function ( $menu_item, array $args, AppContext $context, $info ) {
 
 							$object_id   = intval( get_post_meta( $menu_item->menuItemId, '_menu_item_object_id', true ) );
 							$object_type = get_post_meta( $menu_item->menuItemId, '_menu_item_type', true );

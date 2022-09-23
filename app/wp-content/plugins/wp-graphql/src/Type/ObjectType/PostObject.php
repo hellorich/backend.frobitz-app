@@ -89,6 +89,7 @@ class PostObject {
 				'description' => sprintf( __( 'The %s type', 'wp-graphql' ), $single_name ),
 				'interfaces'  => $interfaces,
 				'fields'      => self::get_post_object_fields( $post_type_object, $type_registry ),
+				'model'       => Post::class,
 			]
 		);
 
@@ -112,7 +113,7 @@ class PostObject {
 								'description' => __( 'Format of the field output', 'wp-graphql' ),
 							],
 						],
-						'resolve'     => function( $source, $args ) {
+						'resolve'     => function ( $source, $args ) {
 							if ( isset( $args['format'] ) && 'raw' === $args['format'] ) {
 								// @codingStandardsIgnoreLine.
 								return $source->captionRaw;
@@ -135,7 +136,7 @@ class PostObject {
 							],
 						],
 						'description' => __( 'The srcset attribute specifies the URL of the image to use in different situations. It is a comma separated string of urls and their widths.', 'wp-graphql' ),
-						'resolve'     => function( $source, $args ) {
+						'resolve'     => function ( $source, $args ) {
 							$size = 'medium';
 							if ( ! empty( $args['size'] ) ) {
 								$size = $args['size'];
@@ -155,20 +156,20 @@ class PostObject {
 							],
 						],
 						'description' => __( 'The sizes attribute value for an image.', 'wp-graphql' ),
-						'resolve'     => function( $source, $args ) {
+						'resolve'     => function ( $source, $args ) {
 							$size = 'medium';
 							if ( ! empty( $args['size'] ) ) {
 								$size = $args['size'];
 							}
 
-							$url = wp_get_attachment_image_src( $source->ID, $size );
-							if ( ! is_array( $url ) || ! isset( $url[0] ) ) {
-								return null;
+							$image = wp_get_attachment_image_src( $source->ID, $size );
+							if ( $image ) {
+								list( $src, $width, $height ) = $image;
+								$sizes                        = wp_calculate_image_sizes( [ absint( $width ), absint( $height ) ], $src, null, $source->ID );
+								return ! empty( $sizes ) ? $sizes : null;
 							}
 
-							$sizes = wp_calculate_image_sizes( $size, $url[0], null, $source->ID );
-
-							return ! empty( $sizes ) ? $sizes : null;
+							return null;
 						},
 					],
 					'description'  => [
@@ -180,7 +181,7 @@ class PostObject {
 								'description' => __( 'Format of the field output', 'wp-graphql' ),
 							],
 						],
-						'resolve'     => function( $source, $args ) {
+						'resolve'     => function ( $source, $args ) {
 							if ( isset( $args['format'] ) && 'raw' === $args['format'] ) {
 								// @codingStandardsIgnoreLine.
 								return $source->descriptionRaw;
@@ -207,7 +208,7 @@ class PostObject {
 								'description' => __( 'Size of the MediaItem to return', 'wp-graphql' ),
 							],
 						],
-						'resolve'     => function( $image, $args, $context, $info ) {
+						'resolve'     => function ( $image, $args, $context, $info ) {
 							// @codingStandardsIgnoreLine.
 							$size = null;
 							if ( isset( $args['size'] ) ) {
@@ -226,7 +227,7 @@ class PostObject {
 								'description' => __( 'Size of the MediaItem to return', 'wp-graphql' ),
 							],
 						],
-						'resolve'     => function( $image, $args, $context, $info ) {
+						'resolve'     => function ( $image, $args, $context, $info ) {
 
 							// @codingStandardsIgnoreLine.
 							$size = null;
@@ -280,7 +281,7 @@ class PostObject {
 				],
 				'deprecationReason' => __( 'Deprecated in favor of the databaseId field', 'wp-graphql' ),
 				'description'       => __( 'The id field matches the WP_Post->ID field.', 'wp-graphql' ),
-				'resolve'           => function( Post $post, $args, $context, $info ) {
+				'resolve'           => function ( Post $post, $args, $context, $info ) {
 					return absint( $post->ID );
 				},
 			],
@@ -295,6 +296,11 @@ class PostObject {
 			$fields['isPostsPage'] = [
 				'type'        => [ 'non_null' => 'Bool' ],
 				'description' => __( 'Whether this page is set to the blog posts page.', 'wp-graphql' ),
+			];
+
+			$fields['isPrivacyPage'] = [
+				'type'        => [ 'non_null' => 'Bool' ],
+				'description' => __( 'Whether this page is set to the privacy page.', 'wp-graphql' ),
 			];
 		}
 

@@ -38,7 +38,7 @@ class PostObjects {
 			'fromFieldName'  => 'contentNodes',
 			'connectionArgs' => self::get_connection_args(),
 			'queryClass'     => 'WP_Query',
-			'resolve'        => function( PostType $post_type, $args, AppContext $context, ResolveInfo $info ) {
+			'resolve'        => function ( PostType $post_type, $args, AppContext $context, ResolveInfo $info ) {
 
 				$resolver = new PostObjectConnectionResolver( $post_type, $args, $context, $info );
 				$resolver->set_query_arg( 'post_type', $post_type->name );
@@ -54,7 +54,7 @@ class PostObjects {
 			'queryClass'    => 'WP_Query',
 			'oneToOne'      => true,
 			'fromFieldName' => 'commentedOn',
-			'resolve'       => function( Comment $comment, $args, AppContext $context, ResolveInfo $info ) {
+			'resolve'       => function ( Comment $comment, $args, AppContext $context, ResolveInfo $info ) {
 				if ( empty( $comment->comment_post_ID ) || ! absint( $comment->comment_post_ID ) ) {
 					return null;
 				}
@@ -71,7 +71,7 @@ class PostObjects {
 			'fromFieldName' => 'revisionOf',
 			'description'   => __( 'If the current node is a revision, this field exposes the node this is a revision of. Returns null if the node is not a revision of another node.', 'wp-graphql' ),
 			'oneToOne'      => true,
-			'resolve'       => function( Post $post, $args, AppContext $context, ResolveInfo $info ) {
+			'resolve'       => function ( Post $post, $args, AppContext $context, ResolveInfo $info ) {
 
 				if ( ! $post->isRevision || ! isset( $post->parentDatabaseId ) || ! absint( $post->parentDatabaseId ) ) {
 					return null;
@@ -91,16 +91,8 @@ class PostObjects {
 				'toType'         => 'ContentNode',
 				'queryClass'     => 'WP_Query',
 				'fromFieldName'  => 'contentNodes',
-				'connectionArgs' => self::get_connection_args(
-					[
-						'contentTypes' => [
-							'type'        => [ 'list_of' => 'ContentTypeEnum' ],
-							'description' => __( 'The Types of content to filter', 'wp-graphql' ),
-						],
-					],
-					null
-				),
-				'resolve'        => function( $source, $args, $context, $info ) {
+				'connectionArgs' => self::get_connection_args(),
+				'resolve'        => function ( $source, $args, $context, $info ) {
 					$post_types = isset( $args['where']['contentTypes'] ) && is_array( $args['where']['contentTypes'] ) ? $args['where']['contentTypes'] : \WPGraphQL::get_allowed_post_types();
 
 					return DataSource::resolve_post_objects_connection( $source, $args, $context, $info, $post_types );
@@ -115,7 +107,7 @@ class PostObjects {
 			'connectionTypeName' => 'HierarchicalContentNodeToParentContentNodeConnection',
 			'description'        => __( 'The parent of the node. The parent object can be of various types', 'wp-graphql' ),
 			'oneToOne'           => true,
-			'resolve'            => function( Post $post, $args, AppContext $context, ResolveInfo $info ) {
+			'resolve'            => function ( Post $post, $args, AppContext $context, ResolveInfo $info ) {
 
 				if ( ! isset( $post->parentDatabaseId ) || ! absint( $post->parentDatabaseId ) ) {
 					return null;
@@ -136,7 +128,7 @@ class PostObjects {
 			'connectionTypeName' => 'HierarchicalContentNodeToContentNodeChildrenConnection',
 			'connectionArgs'     => self::get_connection_args(),
 			'queryClass'         => 'WP_Query',
-			'resolve'            => function( Post $post, $args, $context, $info ) {
+			'resolve'            => function ( Post $post, $args, $context, $info ) {
 
 				if ( $post->isRevision ) {
 					$id = $post->parentDatabaseId;
@@ -160,7 +152,7 @@ class PostObjects {
 			'connectionTypeName' => 'HierarchicalContentNodeToContentNodeAncestorsConnection',
 			'queryClass'         => 'WP_Query',
 			'description'        => __( 'Returns ancestors of the node. Default ordered as lowest (closest to the child) to highest (closest to the root).', 'wp-graphql' ),
-			'resolve'            => function( Post $post, $args, $context, $info ) {
+			'resolve'            => function ( Post $post, $args, $context, $info ) {
 				$ancestors = get_ancestors( $post->ID, '', 'post_type' );
 				if ( empty( $ancestors ) || ! is_array( $ancestors ) ) {
 					return null;
@@ -175,126 +167,107 @@ class PostObjects {
 		/**
 		 * Registers connections for each post_type that has a connection
 		 * to a taxonomy that's allowed in GraphQL
+		 *
+		 * @var \WP_Taxonomy[] $allowed_taxonomies
 		 */
-		$allowed_taxonomies = \WPGraphQL::get_allowed_taxonomies();
+		$allowed_taxonomies = \WPGraphQL::get_allowed_taxonomies( 'objects' );
 
 		/**
 		 * Register Connections to PostObjects
+		 *
+		 * @var \WP_Post_Type[] $allowed_post_types
 		 */
-		$allowed_post_types = \WPGraphQL::get_allowed_post_types();
-		if ( ! empty( $allowed_post_types ) && is_array( $allowed_post_types ) ) {
-			foreach ( $allowed_post_types as $post_type ) {
+		$allowed_post_types = \WPGraphQL::get_allowed_post_types( 'objects' );
+		foreach ( $allowed_post_types as $post_type_object ) {
 
-				$post_type_object = get_post_type_object( $post_type );
+			/**
+			 * Registers the RootQuery connection for each post_type
+			 */
+			if ( 'revision' !== $post_type_object->name ) {
+				$root_query_from_field_name = lcfirst( $post_type_object->graphql_plural_name );
 
-				if ( empty( $post_type_object ) ) {
-					return;
+				// Prevent field name conflicts with the singular PostObject type.
+				if ( $post_type_object->graphql_single_name === $post_type_object->graphql_plural_name ) {
+					$root_query_from_field_name = 'all' . ucfirst( $post_type_object->graphql_single_name );
 				}
 
-				/**
-				 * Registers the RootQuery connection for each post_type
-				 */
-				if ( 'revision' !== $post_type ) {
-					register_graphql_connection( self::get_connection_config( $post_type_object ) );
-				}
+				register_graphql_connection(
+					self::get_connection_config(
+						$post_type_object,
+						[
+							'fromFieldName' => $root_query_from_field_name,
+						]
+					)
+				);
+			}
 
-				if ( ! in_array( $post_type, [ 'attachment', 'revision' ], true ) ) {
-					register_graphql_connection( [
-						'fromType'           => $post_type_object->graphql_single_name,
-						'toType'             => $post_type_object->graphql_single_name,
-						'fromFieldName'      => 'preview',
-						'connectionTypeName' => ucfirst( $post_type_object->graphql_single_name ) . 'ToPreviewConnection',
-						'oneToOne'           => true,
-						'resolve'            => function( Post $post, $args, AppContext $context, ResolveInfo $info ) {
-
-							if ( $post->isRevision ) {
-								return null;
-							}
-
-							if ( empty( $post->previewRevisionDatabaseId ) ) {
-								return null;
-							}
-
-							$resolver = new PostObjectConnectionResolver( $post, $args, $context, $info, 'revision' );
-							$resolver->set_query_arg( 'p', $post->previewRevisionDatabaseId );
-
-							return $resolver->one_to_one()->get_connection();
-						},
-					] );
-				}
-
-				/**
-				 * Any post type that supports author should have a connection from User->Author
-				 */
-				if ( true === post_type_supports( $post_type_object->name, 'author' ) ) {
-
-					/**
-					 * Registers the User connection for each post_type
-					 */
-					register_graphql_connection(
-						self::get_connection_config(
-							$post_type_object,
-							[
-								'fromType' => 'User',
-								'resolve'  => function( User $user, $args, AppContext $context, ResolveInfo $info ) use ( $post_type_object ) {
-									$resolver = new PostObjectConnectionResolver( $user, $args, $context, $info, $post_type_object->name );
-									$resolver->set_query_arg( 'author', $user->userId );
-
-									return $resolver->get_connection();
-								},
-							]
-						)
-					);
-
-				}
-
-				if ( ! empty( $allowed_taxonomies ) && is_array( $allowed_taxonomies ) ) {
-					foreach ( $allowed_taxonomies as $taxonomy ) {
-						// If the taxonomy is in the array of taxonomies registered to the post_type
-						if ( in_array( $taxonomy, get_object_taxonomies( $post_type_object->name ), true ) ) {
-							$tax_object = get_taxonomy( $taxonomy );
-
-							register_graphql_connection(
-								self::get_connection_config(
-									$post_type_object,
-									[
-										'fromType' => $tax_object->graphql_single_name,
-										'resolve'  => function( Term $term, $args, AppContext $context, ResolveInfo $info ) use ( $post_type_object ) {
-											$resolver = new PostObjectConnectionResolver( $term, $args, $context, $info, $post_type_object->name );
-											$resolver->set_query_arg( 'tax_query', [
-												[
-													'taxonomy'         => $term->taxonomyName,
-													'terms'            => [ $term->term_id ],
-													'field'            => 'term_id',
-													'include_children' => false,
-												],
-											] );
-
-											return $resolver->get_connection();
-										},
-									]
-								)
-							);
-
+			if ( ! in_array( $post_type_object->name, [ 'attachment', 'revision' ], true ) ) {
+				register_graphql_connection( [
+					'fromType'           => $post_type_object->graphql_single_name,
+					'toType'             => $post_type_object->graphql_single_name,
+					'fromFieldName'      => 'preview',
+					'connectionTypeName' => ucfirst( $post_type_object->graphql_single_name ) . 'ToPreviewConnection',
+					'oneToOne'           => true,
+					'resolve'            => function ( Post $post, $args, AppContext $context, ResolveInfo $info ) {
+						if ( $post->isRevision ) {
+							return null;
 						}
-					}
-				}
+
+						if ( empty( $post->previewRevisionDatabaseId ) ) {
+							return null;
+						}
+
+						$resolver = new PostObjectConnectionResolver( $post, $args, $context, $info, 'revision' );
+						$resolver->set_query_arg( 'p', $post->previewRevisionDatabaseId );
+
+						return $resolver->one_to_one()->get_connection();
+					},
+				] );
+			}
+
+			/**
+			 * Any post type that supports author should have a connection from User->Author
+			 */
+			if ( true === post_type_supports( $post_type_object->name, 'author' ) ) {
 
 				/**
-				 * If the post_type has revisions enabled, add a connection from the Post Object to revisions
+				 * Registers the User connection for each post_type
 				 */
-				if ( true === post_type_supports( $post_type_object->name, 'revisions' ) ) {
+				register_graphql_connection(
+					self::get_connection_config(
+						$post_type_object,
+						[
+							'fromType' => 'User',
+							'resolve'  => function ( User $user, $args, AppContext $context, ResolveInfo $info ) use ( $post_type_object ) {
+								$resolver = new PostObjectConnectionResolver( $user, $args, $context, $info, $post_type_object->name );
+								$resolver->set_query_arg( 'author', $user->userId );
+
+								return $resolver->get_connection();
+							},
+						]
+					)
+				);
+			}
+
+			foreach ( $allowed_taxonomies as $tax_object ) {
+				// If the taxonomy is in the array of taxonomies registered to the post_type
+				if ( in_array( $tax_object->name, get_object_taxonomies( $post_type_object->name ), true ) ) {
+
 					register_graphql_connection(
 						self::get_connection_config(
 							$post_type_object,
 							[
-								'connectionTypeName' => $post_type_object->graphql_single_name . 'ToRevisionConnection',
-								'fromType'           => $post_type_object->graphql_single_name,
-								'toType'             => $post_type_object->graphql_single_name,
-								'fromFieldName'      => 'revisions',
-								'resolve'            => function( Post $post, $args, $context, $info ) {
-									$resolver = new PostObjectConnectionResolver( $post, $args, $context, $info, 'revision' );
-									$resolver->set_query_arg( 'post_parent', $post->ID );
+								'fromType' => $tax_object->graphql_single_name,
+								'resolve'  => function ( Term $term, $args, AppContext $context, ResolveInfo $info ) use ( $post_type_object ) {
+									$resolver = new PostObjectConnectionResolver( $term, $args, $context, $info, $post_type_object->name );
+									$resolver->set_query_arg( 'tax_query', [
+										[
+											'taxonomy' => $term->taxonomyName,
+											'terms'    => [ $term->term_id ],
+											'field'    => 'term_id',
+											'include_children' => false,
+										],
+									] );
 
 									return $resolver->get_connection();
 								},
@@ -302,43 +275,63 @@ class PostObjects {
 						)
 					);
 				}
+			}
+
+			/**
+			 * If the post_type has revisions enabled, add a connection from the Post Object to revisions
+			 */
+			if ( true === post_type_supports( $post_type_object->name, 'revisions' ) ) {
+				register_graphql_connection(
+					self::get_connection_config(
+						$post_type_object,
+						[
+							'connectionTypeName' => $post_type_object->graphql_single_name . 'ToRevisionConnection',
+							'fromType'           => $post_type_object->graphql_single_name,
+							'toType'             => $post_type_object->graphql_single_name,
+							'fromFieldName'      => 'revisions',
+							'resolve'            => function ( Post $post, $args, $context, $info ) {
+								$resolver = new PostObjectConnectionResolver( $post, $args, $context, $info, 'revision' );
+								$resolver->set_query_arg( 'post_parent', $post->ID );
+
+								return $resolver->get_connection();
+							},
+						]
+					)
+				);
 			}
 		}
 
 		// Register a connection from all taxonomies that are connected to
-		if ( ! empty( $allowed_taxonomies ) && is_array( $allowed_taxonomies ) ) {
-			foreach ( $allowed_taxonomies as $taxonomy ) {
-
-				$tax_object = get_taxonomy( $taxonomy );
-
-				if ( empty( $tax_object->object_type ) ) {
-					return;
-				}
-
-				// Connection from the Taxonomy to Content Nodes
-				register_graphql_connection( self::get_connection_config( $tax_object, [
-					'fromType'      => $tax_object->graphql_single_name,
-					'fromFieldName' => 'contentNodes',
-					'toType'        => 'ContentNode',
-					'resolve'       => function( Term $term, $args, $context, $info ) {
-
-						$resolver = new PostObjectConnectionResolver( $term, $args, $context, $info, 'any' );
-						$resolver->set_query_arg( 'tax_query', [
-							[
-								'taxonomy'         => $term->taxonomyName,
-								'terms'            => [ $term->term_id ],
-								'field'            => 'term_id',
-								'include_children' => false,
-							],
-						] );
-
-						return $resolver->get_connection();
-
-					},
-				] ) );
+		foreach ( $allowed_taxonomies as $tax_object ) {
+			if ( empty( $tax_object->object_type ) ) {
+				continue;
 			}
-		}
 
+			// Connection from the Taxonomy to Content Nodes
+			register_graphql_connection(
+				self::get_connection_config(
+					$tax_object,
+					[
+						'fromType'      => $tax_object->graphql_single_name,
+						'fromFieldName' => 'contentNodes',
+						'toType'        => 'ContentNode',
+						'resolve'       => function ( Term $term, $args, $context, $info ) {
+							$resolver = new PostObjectConnectionResolver( $term, $args, $context, $info, 'any' );
+							$resolver->set_query_arg( 'tax_query', [
+								[
+									'taxonomy'         => $term->taxonomyName,
+									'terms'            => [ $term->term_id ],
+									'field'            => 'term_id',
+									'include_children' => false,
+								],
+							] );
+
+							return $resolver->get_connection();
+						},
+					]
+				)
+			);
+		}
 	}
 
 	/**
@@ -367,7 +360,7 @@ class PostObjects {
 				'queryClass'     => 'WP_Query',
 				'fromFieldName'  => lcfirst( $graphql_object->graphql_plural_name ),
 				'connectionArgs' => $connection_args,
-				'resolve'        => function( $root, $args, $context, $info ) use ( $graphql_object ) {
+				'resolve'        => function ( $root, $args, $context, $info ) use ( $graphql_object ) {
 					return DataSource::resolve_post_objects_connection( $root, $args, $context, $info, $graphql_object->name );
 				},
 			],
@@ -379,7 +372,7 @@ class PostObjects {
 	 * Given an optional array of args, this returns the args to be used in the connection
 	 *
 	 * @param array         $args             The args to modify the defaults
-	 * @param WP_Post_Type $post_type_object The post type the connection is going to
+	 * @param mixed|WP_Post_Type|WP_Taxonomy $post_type_object The post type the connection is going to
 	 *
 	 * @return array
 	 */
@@ -406,15 +399,29 @@ class PostObjects {
 			 */
 			'id'          => [
 				'type'        => 'Int',
-				'description' => __( 'Specific ID of the object', 'wp-graphql' ),
+				'description' => __( 'Specific database ID of the object', 'wp-graphql' ),
+			],
+			'in'          => [
+				'type'        => [
+					'list_of' => 'ID',
+				],
+				'description' => __( 'Array of IDs for the objects to retrieve', 'wp-graphql' ),
+			],
+			'notIn'       => [
+				'type'        => [
+					'list_of' => 'ID',
+				],
+				'description' => __( 'Specify IDs NOT to retrieve. If this is used in the same query as "in", it will be ignored', 'wp-graphql' ),
 			],
 			'name'        => [
 				'type'        => 'String',
 				'description' => __( 'Slug / post_name of the object', 'wp-graphql' ),
 			],
-			'title'       => [
-				'type'        => 'String',
-				'description' => __( 'Title of the object', 'wp-graphql' ),
+			'nameIn'      => [
+				'type'        => [
+					'list_of' => 'String',
+				],
+				'description' => __( 'Specify objects to retrieve. Use slugs', 'wp-graphql' ),
 			],
 			'parent'      => [
 				'type'        => 'ID',
@@ -432,23 +439,9 @@ class PostObjects {
 				],
 				'description' => __( 'Specify posts whose parent is not in an array', 'wp-graphql' ),
 			],
-			'in'          => [
-				'type'        => [
-					'list_of' => 'ID',
-				],
-				'description' => __( 'Array of IDs for the objects to retrieve', 'wp-graphql' ),
-			],
-			'notIn'       => [
-				'type'        => [
-					'list_of' => 'ID',
-				],
-				'description' => __( 'Specify IDs NOT to retrieve. If this is used in the same query as "in", it will be ignored', 'wp-graphql' ),
-			],
-			'nameIn'      => [
-				'type'        => [
-					'list_of' => 'String',
-				],
-				'description' => __( 'Specify objects to retrieve. Use slugs', 'wp-graphql' ),
+			'title'       => [
+				'type'        => 'String',
+				'description' => __( 'Title of the object', 'wp-graphql' ),
 			],
 
 			/**
@@ -478,20 +471,18 @@ class PostObjects {
 			/**
 			 * Status parameters
 			 *
-			 * @see   : https://codex.wordpress.org/Class_Reference/WP_Query#Status_Parameters
+			 * @see   : https://developer.wordpress.org/reference/classes/wp_query/#status-parameters
 			 * @since 0.0.2
 			 */
 			'status'      => [
-				'type' => 'PostStatusEnum',
+				'type'        => 'PostStatusEnum',
+				'description' => __( 'Show posts with a specific status.', 'wp-graphql' ),
 			],
-
-			/**
-			 * List of post status parameters
-			 */
 			'stati'       => [
-				'type' => [
+				'type'        => [
 					'list_of' => 'PostStatusEnum',
 				],
+				'description' => __( 'Retrieve posts where post status is in an array.', 'wp-graphql' ),
 			],
 
 			/**
@@ -506,10 +497,22 @@ class PostObjects {
 				],
 				'description' => __( 'What paramater to use to order the objects by.', 'wp-graphql' ),
 			],
+
+			/**
+			 * Date parameters
+			 *
+			 * @see https://developer.wordpress.org/reference/classes/wp_query/#date-parameters
+			 */
 			'dateQuery'   => [
 				'type'        => 'DateQueryInput',
 				'description' => __( 'Filter the connection based on dates', 'wp-graphql' ),
 			],
+
+			/**
+			 * Mime type parameters
+			 *
+			 * @see https://developer.wordpress.org/reference/classes/wp_query/#mime-type-parameters
+			 */
 			'mimeType'    => [
 				'type'        => 'MimeTypeEnum',
 				'description' => __( 'Get objects with a specific mimeType property', 'wp-graphql' ),
@@ -669,15 +672,39 @@ class PostObjects {
 					'type'        => [
 						'list_of' => 'String',
 					],
-					'description' => __( 'Array of tag slugs, used to display objects from one tag OR another', 'wp-graphql' ),
+					'description' => __( 'Array of tag slugs, used to display objects from one tag AND another', 'wp-graphql' ),
 				];
 				$fields['tagSlugIn']  = [
 					'type'        => [
 						'list_of' => 'String',
 					],
-					'description' => __( 'Array of tag slugs, used to exclude objects in specified tags', 'wp-graphql' ),
+					'description' => __( 'Array of tag slugs, used to include objects in ANY specified tags', 'wp-graphql' ),
 				];
 			}
+		} elseif ( $post_type_object instanceof WP_Taxonomy ) {
+			/**
+			 * Taxonomy-specific Content Type $args
+			 *
+			 * @see   : https://developer.wordpress.org/reference/classes/wp_query/#post-type-parameters
+			 */
+			$args['contentTypes'] = [
+				'type'        => [ 'list_of' => 'ContentTypesOf' . \WPGraphQL\Utils\Utils::format_type_name( $post_type_object->graphql_single_name ) . 'Enum' ],
+				'description' => __( 'The Types of content to filter', 'wp-graphql' ),
+			];
+		} else {
+			/**
+			 * Handle cases when the connection is for many post types
+			 */
+
+			/**
+			 * Content Type $args
+			 *
+			 * @see   : https://developer.wordpress.org/reference/classes/wp_query/#post-type-parameters
+			 */
+			$args['contentTypes'] = [
+				'type'        => [ 'list_of' => 'ContentTypeEnum' ],
+				'description' => __( 'The Types of content to filter', 'wp-graphql' ),
+			];
 		}
 
 		return array_merge( $fields, $args );

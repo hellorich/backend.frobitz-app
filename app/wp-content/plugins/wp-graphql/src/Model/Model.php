@@ -22,7 +22,7 @@ abstract class Model {
 	/**
 	 * Stores the raw data passed to the child class when it's instantiated before it's transformed
 	 *
-	 * @var array $data
+	 * @var array|object|mixed $data
 	 */
 	protected $data;
 
@@ -98,7 +98,7 @@ abstract class Model {
 		}
 
 		$this->init();
-		self::prepare_fields();
+		$this->prepare_fields();
 
 	}
 
@@ -202,7 +202,7 @@ abstract class Model {
 	/**
 	 * Return the visibility state for the current piece of data
 	 *
-	 * @return string
+	 * @return string|null
 	 */
 	public function get_visibility() {
 
@@ -226,6 +226,7 @@ abstract class Model {
 			 * Filter to short circuit default is_private check for the model. This is expensive in some cases so
 			 * this filter lets you prevent this from running by returning a true or false value.
 			 *
+			 * @param ?bool       $is_private   Whether the model data is private. Defaults to null.
 			 * @param string      $model_name   Name of the model the filter is currently being executed in
 			 * @param mixed       $data         The un-modeled incoming data
 			 * @param string|null $visibility   The visibility that has currently been set for the data at this point
@@ -256,7 +257,7 @@ abstract class Model {
 			 *
 			 * @return bool
 			 */
-			$is_private = apply_filters( 'graphql_data_is_private', $is_private, $this->get_model_name(), $this->data, $this->visibility, $this->owner, $this->current_user );
+			$is_private = apply_filters( 'graphql_data_is_private', (bool) $is_private, $this->get_model_name(), $this->data, $this->visibility, $this->owner, $this->current_user );
 
 			if ( true === $is_private ) {
 				$this->visibility = 'private';
@@ -348,7 +349,7 @@ abstract class Model {
 		$self        = $this;
 		foreach ( $this->fields as $key => $data ) {
 
-			$clean_array[ $key ] = function() use ( $key, $data, $self ) {
+			$clean_array[ $key ] = function () use ( $key, $data, $self ) {
 				if ( is_array( $data ) ) {
 					$callback = ( ! empty( $data['callback'] ) ) ? $data['callback'] : null;
 
@@ -380,6 +381,7 @@ abstract class Model {
 				 * other than null will stop the callback for the field from executing, and will
 				 * return your data or execute your callback instead.
 				 *
+				 * @param ?string  $result       The data returned from the callback. Null by default.
 				 * @param string   $key          The name of the field on the type
 				 * @param string   $model_name   Name of the model the filter is currently being executed in
 				 * @param mixed    $data         The un-modeled incoming data
@@ -449,13 +451,13 @@ abstract class Model {
 		/**
 		 * @TODO: potentially abstract this out into a more central spot
 		 */
-		$this->fields['isPublic']     = function() {
+		$this->fields['isPublic']     = function () {
 			return 'public' === $this->get_visibility();
 		};
-		$this->fields['isRestricted'] = function() {
+		$this->fields['isRestricted'] = function () {
 			return 'restricted' === $this->get_visibility();
 		};
-		$this->fields['isPrivate']    = function() {
+		$this->fields['isPrivate']    = function () {
 			return 'private' === $this->get_visibility();
 		};
 
@@ -473,7 +475,7 @@ abstract class Model {
 		}
 
 		/**
-		 * Filter the array of fields for the Model before the object is hydrated with it
+		 * Add support for the deprecated "graphql_return_modeled_data" filter.
 		 *
 		 * @param array    $fields       The array of fields for the model
 		 * @param string   $model_name   Name of the model the filter is currently being executed in
@@ -482,11 +484,26 @@ abstract class Model {
 		 * @param WP_User  $current_user The current user for the session
 		 *
 		 * @return array
+		 *
+		 * @deprecated 1.7.0 use "graphql_model_prepare_fields" filter instead, which passes additional context to the filter
 		 */
-		$this->fields = apply_filters( 'graphql_return_modeled_data', $this->fields, $this->get_model_name(), $this->visibility, $this->owner, $this->current_user );
+		$this->fields = apply_filters_deprecated( 'graphql_return_modeled_data', [ $this->fields, $this->get_model_name(), $this->visibility, $this->owner, $this->current_user ], '1.7.0', 'graphql_model_prepare_fields' );
+
+		/**
+		 * Filter the array of fields for the Model before the object is hydrated with it
+		 *
+		 * @param array    $fields       The array of fields for the model
+		 * @param string   $model_name   Name of the model the filter is currently being executed in
+		 * @param mixed    $data         The un-modeled incoming data
+		 * @param string   $visibility   The visibility setting for this piece of data
+		 * @param null|int $owner        The user ID for the owner of this piece of data
+		 * @param WP_User  $current_user The current user for the session
+		 *
+		 * @return array
+		 */
+		$this->fields = apply_filters( 'graphql_model_prepare_fields', $this->fields, $this->get_model_name(), $this->data, $this->visibility, $this->owner, $this->current_user );
 		$this->wrap_fields();
 		$this->add_model_visibility();
-
 	}
 
 	/**

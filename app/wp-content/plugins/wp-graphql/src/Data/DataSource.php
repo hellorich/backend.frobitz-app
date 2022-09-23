@@ -28,6 +28,7 @@ use WPGraphQL\Model\Term;
 use WPGraphQL\Model\Theme;
 use WPGraphQL\Model\User;
 use WPGraphQL\Model\UserRole;
+use WPGraphQL\Registry\TypeRegistry;
 
 /**
  * Class DataSource
@@ -116,7 +117,6 @@ class DataSource {
 	 */
 	public static function resolve_plugins_connection( $source, array $args, AppContext $context, ResolveInfo $info ) {
 		$resolver = new PluginConnectionResolver( $source, $args, $context, $info );
-
 		return $resolver->get_connection();
 	}
 
@@ -183,23 +183,22 @@ class DataSource {
 
 		/**
 		 * Get the allowed_taxonomies
+		 *
+		 * @var string[] $allowed_taxonomies
 		 */
 		$allowed_taxonomies = \WPGraphQL::get_allowed_taxonomies();
 
-		/**
-		 * If the $post_type is one of the allowed_post_types
-		 */
-		if ( in_array( $taxonomy, $allowed_taxonomies, true ) ) {
-			$tax_object = get_taxonomy( $taxonomy );
-
-			if ( ! $tax_object instanceof \WP_Taxonomy ) {
-				throw new UserError( sprintf( __( 'No taxonomy was found with the name %s', 'wp-graphql' ), $taxonomy ) );
-			}
-
-			return new Taxonomy( $tax_object );
-		} else {
+		if ( ! in_array( $taxonomy, $allowed_taxonomies, true ) ) {
 			throw new UserError( sprintf( __( 'No taxonomy was found with the name %s', 'wp-graphql' ), $taxonomy ) );
 		}
+
+		$tax_object = get_taxonomy( $taxonomy );
+
+		if ( ! $tax_object instanceof \WP_Taxonomy ) {
+			throw new UserError( sprintf( __( 'No taxonomy was found with the name %s', 'wp-graphql' ), $taxonomy ) );
+		}
+
+		return new Taxonomy( $tax_object );
 
 	}
 
@@ -270,7 +269,8 @@ class DataSource {
 	 * @since  0.0.5
 	 */
 	public static function resolve_themes_connection( $source, array $args, AppContext $context, ResolveInfo $info ) {
-		return ThemeConnectionResolver::resolve( $source, $args, $context, $info );
+		$resolver = new ThemeConnectionResolver( $source, $args, $context, $info );
+		return $resolver->get_connection();
 	}
 
 	/**
@@ -340,20 +340,19 @@ class DataSource {
 	 * @param int   $user_id ID of the user to get the avatar data for
 	 * @param array $args    The args to pass to the get_avatar_data function
 	 *
-	 * @return array|null|Avatar
+	 * @return Avatar|null
 	 * @throws Exception
 	 */
-	public static function resolve_avatar( $user_id, $args ) {
+	public static function resolve_avatar( int $user_id, array $args ) {
 
 		$avatar = get_avatar_data( absint( $user_id ), $args );
 
-		if ( ! empty( $avatar ) ) {
-			$avatar = new Avatar( $avatar );
-		} else {
-			$avatar = null;
+		// if there's no url returned, return null
+		if ( empty( $avatar['url'] ) ) {
+			return null;
 		}
 
-		return $avatar;
+		return new Avatar( $avatar );
 
 	}
 
@@ -376,6 +375,27 @@ class DataSource {
 	}
 
 	/**
+	 * Format the setting group name to our standard.
+	 *
+	 * @param string $group
+	 *
+	 * @return string $group
+	 */
+	public static function format_group_name( string $group ) {
+		$replaced_group = preg_replace( '[^a-zA-Z0-9 -]', ' ', $group );
+
+		if ( ! empty( $replaced_group ) ) {
+			$group = $replaced_group;
+		}
+
+		$group = lcfirst( str_replace( '_', ' ', ucwords( $group, '_' ) ) );
+		$group = lcfirst( str_replace( '-', ' ', ucwords( $group, '_' ) ) );
+		$group = lcfirst( str_replace( ' ', '', ucwords( $group, ' ' ) ) );
+
+		return $group;
+	}
+
+	/**
 	 * Get all of the allowed settings by group and return the
 	 * settings group that matches the group param
 	 *
@@ -383,12 +403,12 @@ class DataSource {
 	 *
 	 * @return array $settings_groups[ $group ]
 	 */
-	public static function get_setting_group_fields( string $group ) {
+	public static function get_setting_group_fields( string $group, TypeRegistry $type_registry ) {
 
 		/**
 		 * Get all of the settings, sorted by group
 		 */
-		$settings_groups = self::get_allowed_settings_by_group();
+		$settings_groups = self::get_allowed_settings_by_group( $type_registry );
 
 		return ! empty( $settings_groups[ $group ] ) ? $settings_groups[ $group ] : [];
 
@@ -397,9 +417,11 @@ class DataSource {
 	/**
 	 * Get all of the allowed settings by group
 	 *
+	 * @param TypeRegistry $type_registry The WPGraphQL TypeRegistry
+	 *
 	 * @return array $allowed_settings_by_group
 	 */
-	public static function get_allowed_settings_by_group() {
+	public static function get_allowed_settings_by_group( TypeRegistry $type_registry ) {
 
 		/**
 		 * Get all registered settings
@@ -413,16 +435,22 @@ class DataSource {
 		 */
 		$allowed_settings_by_group = [];
 		foreach ( $registered_settings as $key => $setting ) {
+			$group = self::format_group_name( $setting['group'] );
+
+			if ( ! isset( $setting['type'] ) || ! $type_registry->get_type( $setting['type'] ) ) {
+				continue;
+			}
+
 			if ( ! isset( $setting['show_in_graphql'] ) ) {
 				if ( isset( $setting['show_in_rest'] ) && false !== $setting['show_in_rest'] ) {
-					$setting['key'] = $key;
-					$allowed_settings_by_group[ $setting['group'] ][ $key ] = $setting;
+					$setting['key']                              = $key;
+					$allowed_settings_by_group[ $group ][ $key ] = $setting;
 				}
 			} elseif ( true === $setting['show_in_graphql'] ) {
-				$setting['key'] = $key;
-				$allowed_settings_by_group[ $setting['group'] ][ $key ] = $setting;
+				$setting['key']                              = $key;
+				$allowed_settings_by_group[ $group ][ $key ] = $setting;
 			}
-		};
+		}
 
 		/**
 		 * Set the setting groups that are allowed
@@ -434,18 +462,18 @@ class DataSource {
 		 *
 		 * @param array $allowed_settings_by_group
 		 */
-		$allowed_settings_by_group = apply_filters( 'graphql_allowed_settings_by_group', $allowed_settings_by_group );
-
-		return $allowed_settings_by_group;
+		return apply_filters( 'graphql_allowed_settings_by_group', $allowed_settings_by_group );
 
 	}
 
 	/**
 	 * Get all of the $allowed_settings
 	 *
+	 * @param TypeRegistry $type_registry The WPGraphQL TypeRegistry
+	 *
 	 * @return array $allowed_settings
 	 */
-	public static function get_allowed_settings() {
+	public static function get_allowed_settings( TypeRegistry $type_registry ) {
 
 		/**
 		 * Get all registered settings
@@ -453,20 +481,33 @@ class DataSource {
 		$registered_settings = get_registered_settings();
 
 		/**
-		 * Loop through the $registered_settings and if the setting is allowed in REST or GraphQL
-		 * add it to the $allowed_settings array
+		 * Set allowed settings variable.
 		 */
-		foreach ( $registered_settings as $key => $setting ) {
-			if ( ! isset( $setting['show_in_graphql'] ) ) {
-				if ( isset( $setting['show_in_rest'] ) && false !== $setting['show_in_rest'] ) {
+		$allowed_settings = [];
+
+		if ( ! empty( $registered_settings ) ) {
+
+			/**
+			 * Loop through the $registered_settings and if the setting is allowed in REST or GraphQL
+			 * add it to the $allowed_settings array
+			 */
+			foreach ( $registered_settings as $key => $setting ) {
+
+				if ( ! isset( $setting['type'] ) || ! $type_registry->get_type( $setting['type'] ) ) {
+					continue;
+				}
+
+				if ( ! isset( $setting['show_in_graphql'] ) ) {
+					if ( isset( $setting['show_in_rest'] ) && false !== $setting['show_in_rest'] ) {
+						$setting['key']           = $key;
+						$allowed_settings[ $key ] = $setting;
+					}
+				} elseif ( true === $setting['show_in_graphql'] ) {
 					$setting['key']           = $key;
 					$allowed_settings[ $key ] = $setting;
 				}
-			} elseif ( true === $setting['show_in_graphql'] ) {
-				$setting['key']           = $key;
-				$allowed_settings[ $key ] = $setting;
 			}
-		};
+		}
 
 		/**
 		 * Verify that we have the allowed settings
@@ -481,10 +522,7 @@ class DataSource {
 		 *
 		 * @return array
 		 */
-		$allowed_settings = apply_filters( 'graphql_allowed_setting_groups', $allowed_settings );
-
-		return $allowed_settings;
-
+		return apply_filters( 'graphql_allowed_setting_groups', $allowed_settings );
 	}
 
 	/**
@@ -502,11 +540,11 @@ class DataSource {
 
 			$node_definition = Relay::nodeDefinitions(
 			// The ID fetcher definition
-				function( $global_id, AppContext $context, ResolveInfo $info ) {
+				function ( $global_id, AppContext $context, ResolveInfo $info ) {
 					self::resolve_node( $global_id, $context, $info );
 				},
 				// Type resolver
-				function( $node ) {
+				function ( $node ) {
 					self::resolve_node_type( $node );
 				}
 			);
@@ -536,14 +574,20 @@ class DataSource {
 						$parent_post = get_post( $node->parentDatabaseId );
 						if ( ! empty( $parent_post ) ) {
 							$parent_post_type = $parent_post->post_type;
-							$type             = get_post_type_object( $parent_post_type )->graphql_single_name;
+							/** @var \WP_Post_Type $post_type_object */
+							$post_type_object = get_post_type_object( $parent_post_type );
+							$type             = $post_type_object->graphql_single_name;
 						}
 					} else {
-						$type = get_post_type_object( $node->post_type )->graphql_single_name;
+						/** @var \WP_Post_Type $post_type_object */
+						$post_type_object = get_post_type_object( $node->post_type );
+						$type             = $post_type_object->graphql_single_name;
 					}
 					break;
 				case $node instanceof Term:
-					$type = get_taxonomy( $node->taxonomyName )->graphql_single_name;
+					/** @var \WP_Taxonomy $tax_object */
+					$tax_object = get_taxonomy( $node->taxonomyName );
+					$type       = $tax_object->graphql_single_name;
 					break;
 				case $node instanceof Comment:
 					$type = 'Comment';
