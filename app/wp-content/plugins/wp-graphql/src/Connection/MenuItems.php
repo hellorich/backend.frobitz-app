@@ -2,6 +2,7 @@
 
 namespace WPGraphQL\Connection;
 
+use Exception;
 use GraphQL\Type\Definition\ResolveInfo;
 use WPGraphQL\AppContext;
 use WPGraphQL\Data\Connection\MenuItemConnectionResolver;
@@ -21,6 +22,7 @@ class MenuItems {
 	 * Register connections to MenuItems
 	 *
 	 * @return void
+	 * @throws Exception
 	 */
 	public static function register_connections() {
 
@@ -38,8 +40,14 @@ class MenuItems {
 				[
 					'fromType'      => 'MenuItem',
 					'fromFieldName' => 'childItems',
-					'resolve'       => function( MenuItem $menu_item, $args, AppContext $context, ResolveInfo $info ) {
+					'resolve'       => function ( MenuItem $menu_item, $args, AppContext $context, ResolveInfo $info ) {
+
+						if ( empty( $menu_item->menuId ) || empty( $menu_item->databaseId ) ) {
+							return null;
+						}
+
 						$resolver = new MenuItemConnectionResolver( $menu_item, $args, $context, $info );
+						$resolver->set_query_arg( 'nav_menu', $menu_item->menuId );
 						$resolver->set_query_arg( 'meta_key', '_menu_item_menu_item_parent' );
 						$resolver->set_query_arg( 'meta_value', (int) $menu_item->databaseId );
 						return $resolver->get_connection();
@@ -57,7 +65,7 @@ class MenuItems {
 				[
 					'fromType' => 'Menu',
 					'toType'   => 'MenuItem',
-					'resolve'  => function( Menu $menu, $args, AppContext $context, ResolveInfo $info ) {
+					'resolve'  => function ( Menu $menu, $args, AppContext $context, ResolveInfo $info ) {
 
 						$resolver = new MenuItemConnectionResolver( $menu, $args, $context, $info );
 						$resolver->set_query_arg( 'tax_query', [
@@ -65,7 +73,7 @@ class MenuItems {
 								'taxonomy'         => 'nav_menu',
 								'field'            => 'term_id',
 								'terms'            => (int) $menu->menuId,
-								'include_children' => false,
+								'include_children' => true,
 								'operator'         => 'IN',
 							],
 						] );
@@ -94,7 +102,11 @@ class MenuItems {
 				'connectionArgs' => [
 					'id'               => [
 						'type'        => 'Int',
-						'description' => __( 'The ID of the object', 'wp-graphql' ),
+						'description' => __( 'The database ID of the object', 'wp-graphql' ),
+					],
+					'location'         => [
+						'type'        => 'MenuLocationEnum',
+						'description' => __( 'The menu location for the menu being queried', 'wp-graphql' ),
 					],
 					'parentId'         => [
 						'type'        => 'ID',
@@ -104,14 +116,11 @@ class MenuItems {
 						'type'        => 'Int',
 						'description' => __( 'The database ID of the parent menu object', 'wp-graphql' ),
 					],
-					'location'         => [
-						'type'        => 'MenuLocationEnum',
-						'description' => __( 'The menu location for the menu being queried', 'wp-graphql' ),
-					],
 				],
 				'resolve'        => function ( $source, $args, $context, $info ) {
 					$resolver   = new MenuItemConnectionResolver( $source, $args, $context, $info );
 					$connection = $resolver->get_connection();
+
 					return $connection;
 				},
 			],

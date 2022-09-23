@@ -2,12 +2,10 @@
 namespace WPGraphQL\Type\InterfaceType;
 
 use Exception;
-use GraphQL\Deferred;
-use GraphQL\Type\Definition\ResolveInfo;
-use WPGraphQL\AppContext;
-use WPGraphQL\Data\DataSource;
+use WPGraphQL\Data\Connection\ContentTypeConnectionResolver;
+use WPGraphQL\Data\Connection\EnqueuedScriptsConnectionResolver;
+use WPGraphQL\Data\Connection\EnqueuedStylesheetConnectionResolver;
 use WPGraphQL\Model\Post;
-use WPGraphQL\Model\Term;
 use WPGraphQL\Registry\TypeRegistry;
 
 class ContentNode {
@@ -29,8 +27,47 @@ class ContentNode {
 		register_graphql_interface_type(
 			'ContentNode',
 			[
+				'interfaces'  => [ 'Node', 'UniformResourceIdentifiable' ],
 				'description' => __( 'Nodes used to manage content', 'wp-graphql' ),
-				'resolveType' => function( Post $post ) use ( $type_registry ) {
+				'connections' => [
+					'contentType'         => [
+						'toType'   => 'ContentType',
+						'resolve'  => function ( Post $source, $args, $context, $info ) {
+
+							if ( $source->isRevision ) {
+								$parent    = get_post( $source->parentDatabaseId );
+								$post_type = $parent->post_type ?? null;
+							} else {
+								$post_type = $source->post_type ?? null;
+							}
+
+							if ( empty( $post_type ) ) {
+								return null;
+							}
+
+							$resolver = new ContentTypeConnectionResolver( $source, $args, $context, $info );
+
+							return $resolver->one_to_one()->set_query_arg( 'name', $post_type )->get_connection();
+						},
+						'oneToOne' => true,
+					],
+					'enqueuedScripts'     => [
+						'toType'  => 'EnqueuedScript',
+						'resolve' => function ( $source, $args, $context, $info ) {
+							$resolver = new EnqueuedScriptsConnectionResolver( $source, $args, $context, $info );
+
+							return $resolver->get_connection();
+						},
+					],
+					'enqueuedStylesheets' => [
+						'toType'  => 'EnqueuedStylesheet',
+						'resolve' => function ( $source, $args, $context, $info ) {
+							$resolver = new EnqueuedStylesheetConnectionResolver( $source, $args, $context, $info );
+							return $resolver->get_connection();
+						},
+					],
+				],
+				'resolveType' => function ( Post $post ) use ( $type_registry ) {
 
 					/**
 					 * The resolveType callback is used at runtime to determine what Type an object
@@ -45,7 +82,7 @@ class ContentNode {
 
 					if ( isset( $post->post_type ) && 'revision' === $post->post_type ) {
 						$parent = get_post( $post->parentDatabaseId );
-						if ( ! empty( $parent ) && isset( $parent->post_type ) ) {
+						if ( $parent instanceof \WP_Post ) {
 							$post_type = $parent->post_type;
 						}
 					}
@@ -60,11 +97,12 @@ class ContentNode {
 
 				},
 				'fields'      => [
-					'id'                        => [
-						'type'        => [
-							'non_null' => 'ID',
-						],
-						'description' => __( 'The globally unique identifier of the node.', 'wp-graphql' ),
+					'contentTypeName'           => [
+						'type'        => [ 'non_null' => 'String' ],
+						'description' => __( 'The name of the Content Type the node belongs to', 'wp-graphql' ),
+						'resolve'     => function ( $node ) {
+							return $node->post_type;
+						},
 					],
 					'template'                  => [
 						'type'        => 'ContentTemplate',
@@ -115,10 +153,6 @@ class ContentNode {
 					'link'                      => [
 						'type'        => 'String',
 						'description' => __( 'The permalink of the post', 'wp-graphql' ),
-					],
-					'uri'                       => [
-						'type'        => [ 'non_null' => 'String' ],
-						'description' => __( 'URI path for the resource', 'wp-graphql' ),
 					],
 					'isRestricted'              => [
 						'type'        => 'Boolean',

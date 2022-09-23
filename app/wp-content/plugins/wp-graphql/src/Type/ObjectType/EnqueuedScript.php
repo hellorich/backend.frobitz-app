@@ -21,17 +21,24 @@ class EnqueuedScript {
 			'description' => __( 'Script enqueued by the CMS', 'wp-graphql' ),
 			'interfaces'  => [ 'Node', 'EnqueuedAsset' ],
 			'fields'      => [
-				'id'  => [
+				'id'      => [
 					'type'    => [
 						'non_null' => 'ID',
 					],
-					'resolve' => function( $asset ) {
+					'resolve' => function ( $asset ) {
 						return isset( $asset->handle ) ? Relay::toGlobalId( 'enqueued_script', $asset->handle ) : null;
 					},
 				],
-				'src' => [
-					'resolve' => function( \_WP_Dependency $script ) {
-						return isset( $script->src ) && is_string( $script->src ) ? $script->src : null;
+				'src'     => [
+					'resolve' => function ( \_WP_Dependency $script ) {
+						return ! empty( $script->src ) && is_string( $script->src ) ? $script->src : null;
+					},
+				],
+				'version' => [
+					'resolve' => function ( \_WP_Dependency $script ) {
+						global $wp_scripts;
+
+						return ! empty( $script->ver ) && is_string( $script->ver ) ? (string) $script->ver : $wp_scripts->default_version;
 					},
 				],
 			],

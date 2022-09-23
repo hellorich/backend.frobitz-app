@@ -4,7 +4,6 @@ namespace WPGatsby\Admin;
 
 class Settings {
 
-
 	private $settings_api;
 
 	function __construct() {
@@ -23,10 +22,9 @@ class Settings {
 	/**
 	 * If the settings haven't been saved yet, save the JWT once to prevent it from re-generating.
 	 */
-	public function set_default_jwt_key() {
-
+	public function set_default_jwt_key() {	
 		// Get the JWT Secret
-		$default_secret = Preview::get_setting( 'preview_jwt_secret' );
+		$default_secret = self::get_setting( 'preview_jwt_secret' );
 
 		if ( empty( $default_secret ) ) {
 
@@ -139,7 +137,7 @@ class Settings {
 		echo '<div class="notice-info notice">
 			<p>
 				<a target="_blank" href="'
-					. esc_url( 'https://github.com/gatsbyjs/gatsby-source-wordpress-experimental/blob/master/docs/tutorials/configuring-wp-gatsby.md' ) . '">
+					. esc_url( 'https://github.com/gatsbyjs/gatsby/blob/master/packages/gatsby-source-wordpress/docs/tutorials/configuring-wp-gatsby.md' ) . '">
 					Learn how to configure WPGatsby here 
 					.
 				</a>
@@ -169,7 +167,7 @@ class Settings {
 	}
 
 	private static function get_default_secret() {
-		$default_secret = \WPGatsby\Admin\Preview::get_setting( 'preview_jwt_secret' );
+		$default_secret = self::get_setting( 'preview_jwt_secret' );
 
 		if ( ! $default_secret ) {
 			$default_secret = self::generate_secret();
@@ -212,25 +210,15 @@ class Settings {
 		$settings_fields = [
 			'wpgatsby_settings' => [
 				[
-					'name'              => 'builds_api_webhook',
-					'label'             => __( 'Builds Webhook', 'wpgatsby_settings' ),
-					'desc'              => __( 'Enter your Gatsby Builds Webhook URL. Must begin with http:// or https://.', 'wpgatsby_settings' ),
-					'placeholder'       => __( 'https://', 'wpgatsby_settings' ),
-					'type'              => 'text',
-					'sanitize_callback' => function ( $input ) {
-						return $this->sanitize_url_field( $input );
-					},
-				],
-				[
 					'name'  => 'enable_gatsby_preview',
 					'label' => __( 'Enable Gatsby Preview?', 'wpgatsby_settings' ),
-					'desc'  => __( 'Yes', 'wpgatsby_settings' ),
+					'desc'  => __( 'Yes, allow Gatsby to take over WordPress previews.', 'wpgatsby_settings' ),
 					'type'  => 'checkbox',
 				],
 				[
-					'name'              => 'preview_instance_url',
-					'label'             => __( 'Preview Instance', 'wpgatsby_settings' ),
-					'desc'              => __( 'Enter your Gatsby Preview instance URL. Must begin with http:// or https://.', 'wpgatsby_settings' ),
+					'name'              => 'preview_api_webhook',
+					'label'             => __( 'Preview Webhook URL', 'wpgatsby_settings' ),
+					'desc'              => __( 'Use a comma-separated list to configure multiple webhooks.', 'wpgatsby_settings' ),
 					'placeholder'       => __( 'https://', 'wpgatsby_settings' ),
 					'type'              => 'text',
 					'sanitize_callback' => function ( $input ) {
@@ -238,9 +226,19 @@ class Settings {
 					},
 				],
 				[
-					'name'              => 'preview_api_webhook',
-					'label'             => __( 'Preview Webhook', 'wpgatsby_settings' ),
-					'desc'              => __( 'Enter your Gatsby Preview Webhook URL. Must begin with http:// or https://.', 'wpgatsby_settings' ),
+					'name'              => 'builds_api_webhook',
+					'label'             => __( 'Builds Webhook URL', 'wpgatsby_settings' ),
+					'desc'              => __( 'Use a comma-separated list to configure multiple webhooks.', 'wpgatsby_settings' ),
+					'placeholder'       => __( 'https://', 'wpgatsby_settings' ),
+					'type'              => 'text',
+					'sanitize_callback' => function ( $input ) {
+						return $this->sanitize_url_field( $input );
+					},
+				],
+				[
+					'name'              => 'gatsby_content_sync_url',
+					'label'             => __( 'Gatsby Content Sync URL', 'wpgatsby_settings' ),
+					'desc'              => __( 'Find this URL in your Gatsbyjs.com dashboard settings.', 'wpgatsby_settings' ), 
 					'placeholder'       => __( 'https://', 'wpgatsby_settings' ),
 					'type'              => 'text',
 					'sanitize_callback' => function ( $input ) {

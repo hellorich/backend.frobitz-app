@@ -18,6 +18,8 @@ function graphql_deactivation_callback() {
 
 /**
  * Delete data on deactivation
+ *
+ * @return void
  */
 function delete_graphql_data() {
 
@@ -25,7 +27,7 @@ function delete_graphql_data() {
 	$delete_data = get_graphql_setting( 'delete_data_on_deactivate' );
 
 	// If data is not set to delete, stop now
-	if ( "on" !== $delete_data ) {
+	if ( 'on' !== $delete_data ) {
 		return;
 	}
 
@@ -42,7 +44,7 @@ function delete_graphql_data() {
 
 	// Loop over the registered settings fields and delete the options
 	if ( ! empty( $fields ) && is_array( $fields ) ) {
-		foreach( $fields as $group => $fields ) {
+		foreach ( $fields as $group => $fields ) {
 			delete_option( $group );
 		}
 	}

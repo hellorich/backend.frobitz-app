@@ -3,11 +3,10 @@
 namespace WPGraphQL\Data;
 
 use Exception;
-use GraphQL\Error\UserError;
 use WP;
+use WP_Post;
 use WPGraphQL\AppContext;
 use WPGraphQL\Model\Post;
-use WPGraphQL\Model\PostType;
 
 class NodeResolver {
 
@@ -35,6 +34,34 @@ class NodeResolver {
 	}
 
 	/**
+	 * Given a Post object, validates it before returning it.
+	 *
+	 * @param WP_Post $post
+	 *
+	 * @return WP_Post|null
+	 */
+	public function validate_post( WP_Post $post ) {
+
+		if ( isset( $this->wp->query_vars['post_type'] ) && ( $post->post_type !== $this->wp->query_vars['post_type'] ) ) {
+			return null;
+		}
+
+		if ( ! isset( $this->wp->query_vars['uri'] ) ) {
+			return $post;
+		}
+
+		$permalink    = get_permalink( $post );
+		$parsed_path  = $permalink ? wp_parse_url( $permalink, PHP_URL_PATH ) : null;
+		$trimmed_path = $parsed_path ? rtrim( ltrim( $parsed_path, '/' ), '/' ) : null;
+		$uri_path     = rtrim( ltrim( $this->wp->query_vars['uri'], '/' ), '/' );
+		if ( $trimmed_path !== $uri_path ) {
+			return null;
+		}
+
+		return $post;
+	}
+
+	/**
 	 * Given the URI of a resource, this method attempts to resolve it and return the
 	 * appropriate related object
 	 *
@@ -46,6 +73,24 @@ class NodeResolver {
 	 * @throws Exception
 	 */
 	public function resolve_uri( string $uri, $extra_query_vars = '' ) {
+
+		/**
+		 * When this filter return anything other than null, it will be used as a resolved node
+		 * and the execution will be skipped.
+		 *
+		 * This is to be used in extensions to resolve their own nodes which might not use
+		 * WordPress permalink structure.
+		 *
+		 * @param mixed|null $node The node, defaults to nothing.
+		 * @param string $uri The uri being searched.
+		 * @param AppContext $content The app context.
+		 * @param WP $wp WP object.
+		 */
+		$node = apply_filters( 'graphql_pre_resolve_uri', null, $uri, $this->context, $this->wp );
+
+		if ( ! empty( $node ) ) {
+			return $node;
+		}
 
 		global $wp_rewrite;
 
@@ -60,7 +105,10 @@ class NodeResolver {
 				],
 				true
 			) ) {
-				throw new UserError( __( 'Cannot return a resource for an external URI', 'wp-graphql' ) );
+				graphql_debug( __( 'Cannot return a resource for an external URI', 'wp-graphql' ), [
+					'uri' => $uri,
+				] );
+				return null;
 			}
 		}
 
@@ -84,13 +132,14 @@ class NodeResolver {
 
 		// Fetch the rewrite rules.
 		$rewrite = $wp_rewrite->wp_rewrite_rules();
-		$error   = '404';
+
+		$error = '404';
 		if ( ! empty( $rewrite ) ) {
 			// If we match a rewrite rule, this will be cleared.
 			$error                   = null;
 			$this->wp->did_permalink = true;
 
-			$pathinfo         = isset( $uri ) ? $uri : '';
+			$pathinfo         = ! empty( $uri ) ? $uri : '';
 			list( $pathinfo ) = explode( '?', $pathinfo );
 			$pathinfo         = str_replace( '%', '%25', $pathinfo );
 
@@ -158,7 +207,7 @@ class NodeResolver {
 
 						if ( $wp_rewrite->use_verbose_page_rules && preg_match( '/pagename=\$matches\[([0-9]+)\]/', $query, $varmatch ) ) {
 							// This is a verbose page match, let's check to be sure about it.
-							$page = get_page_by_path( $matches[ $varmatch[1] ] );
+							$page = get_page_by_path( $matches[ $varmatch[1] ] ); // phpcs:ignore WordPressVIPMinimum.Functions.RestrictedFunctions.get_page_by_path_get_page_by_path
 							if ( ! $page ) {
 								continue;
 							}
@@ -181,7 +230,7 @@ class NodeResolver {
 				}
 			}
 
-			if ( isset( $this->wp->matched_rule ) ) {
+			if ( ! empty( $this->wp->matched_rule ) ) {
 
 				// Trim the query of everything up to the '?'.
 				$query = preg_replace( '!^.+\?!', '', $query );
@@ -208,10 +257,13 @@ class NodeResolver {
 		 */
 		$this->wp->public_query_vars = apply_filters( 'query_vars', $this->wp->public_query_vars );
 
-		foreach ( get_post_types( [ 'show_in_graphql' => true ], 'objects' ) as $post_type => $t ) {
+		$post_type_objects = get_post_types( [ 'show_in_graphql' => true ], 'objects' );
 
-			if ( isset( $t->show_in_graphql ) && true === $t->show_in_graphql && $t->query_var ) {
-				$post_type_query_vars[ $t->query_var ] = $post_type;
+		if ( ! empty( $post_type_objects ) ) {
+			foreach ( $post_type_objects as $post_type_object ) {
+				if ( isset( $post_type_object->show_in_graphql ) && true === $post_type_object->show_in_graphql && $post_type_object->query_var ) {
+					$post_type_query_vars[ $post_type_object->query_var ] = $post_type_object->name;
+				}
 			}
 		}
 
@@ -224,8 +276,8 @@ class NodeResolver {
 
 			if ( isset( $this->wp->extra_query_vars[ $wpvar ] ) ) {
 				$this->wp->query_vars[ $wpvar ] = $this->wp->extra_query_vars[ $wpvar ];
-			} elseif ( isset( $_GET[ $wpvar ] ) ) {
-				$this->wp->query_vars[ $wpvar ] = $_GET[ $wpvar ];
+			} elseif ( isset( $_GET[ $wpvar ] ) ) { // phpcs:ignore WordPress.Security.NonceVerification
+				$this->wp->query_vars[ $wpvar ] = $_GET[ $wpvar ]; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.MissingUnslash,WordPress.Security.ValidatedSanitizedInput.InputNotSanitized,WordPress.Security.NonceVerification.Recommended
 			} elseif ( isset( $perma_query_vars[ $wpvar ] ) ) {
 				$this->wp->query_vars[ $wpvar ] = $perma_query_vars[ $wpvar ];
 			} elseif ( isset( $parsed_query[ $wpvar ] ) ) {
@@ -260,7 +312,7 @@ class NodeResolver {
 
 		// Limit publicly queried post_types to those that are publicly_queryable
 		if ( isset( $this->wp->query_vars['post_type'] ) ) {
-			$queryable_post_types = get_post_types( [ 'show_in_graphql' => true ] );
+			$queryable_post_types = \WPGraphQL::get_allowed_post_types();
 
 			if ( ! is_array( $this->wp->query_vars['post_type'] ) ) {
 				if ( ! in_array( $this->wp->query_vars['post_type'], $queryable_post_types, true ) ) {
@@ -295,9 +347,7 @@ class NodeResolver {
 
 		unset( $this->wp->query_vars['graphql'] );
 
-		do_action_ref_array( 'parse_request', [ &$this ] );
-
-		$node = null;
+		do_action_ref_array( 'parse_request', [ &$this->wp ] );
 
 		// If the request is for the homepage, determine
 		if ( '/' === $uri ) {
@@ -307,9 +357,6 @@ class NodeResolver {
 
 			if ( 'page' === $show_on_front && ! empty( $page_id ) ) {
 
-				if ( empty( $page_id ) ) {
-					return null;
-				}
 				$page = get_post( $page_id );
 
 				if ( empty( $page ) ) {
@@ -320,7 +367,7 @@ class NodeResolver {
 
 			} else {
 
-				if ( isset( $this->wp->query_vars['nodeType'] ) && 'Page' === $this->wp->query_vars['nodeType'] ) {
+				if ( isset( $this->wp->query_vars['nodeType'] ) && 'ContentNode' === $this->wp->query_vars['nodeType'] ) {
 					return null;
 				}
 
@@ -335,17 +382,17 @@ class NodeResolver {
 		} elseif ( isset( $this->wp->query_vars['name'] ) ) {
 
 			// Target post types with a public URI.
-			$allowed_post_types = get_post_types( [
-				'show_in_graphql' => true,
-				'public'          => true,
-			] );
+			$allowed_post_types = \WPGraphQL::get_allowed_post_types();
 
 			$post_type = 'post';
 			if ( isset( $this->wp->query_vars['post_type'] ) && in_array( $this->wp->query_vars['post_type'], $allowed_post_types, true ) ) {
 				$post_type = $this->wp->query_vars['post_type'];
 			}
-			// @phpstan-ignore-next-line
-			$post = get_page_by_path( $this->wp->query_vars['name'], 'OBJECT', $post_type );
+
+			$post = get_page_by_path( $this->wp->query_vars['name'], 'OBJECT', $post_type ); // phpcs:ignore WordPressVIPMinimum.Functions.RestrictedFunctions.get_page_by_path_get_page_by_path
+
+			unset( $this->wp->query_vars['uri'] );
+			$post = $post instanceof WP_Post ? $this->validate_post( $post ) : null;
 
 			return isset( $post->ID ) ? $this->context->get_loader( 'post' )->load_deferred( $post->ID ) : null;
 
@@ -360,26 +407,48 @@ class NodeResolver {
 			return isset( $node->term_id ) ? $this->context->get_loader( 'term' )->load_deferred( (int) $node->term_id ) : null;
 		} elseif ( isset( $this->wp->query_vars['pagename'] ) && ! empty( $this->wp->query_vars['pagename'] ) ) {
 
-			$post = get_page_by_path( $this->wp->query_vars['pagename'], 'OBJECT', get_post_types( [ 'show_in_graphql' => true ] ) );
+			unset( $this->wp->query_vars['uri'] );
 
-			if ( isset( $post->ID ) && (int) get_option( 'page_for_posts', 0 ) === $post->ID ) {
-				return $this->context->get_loader( 'post' )->load_deferred( $post->ID );
+			$post_type = isset( $this->wp->query_vars['post_type'] ) ? $this->wp->query_vars['post_type'] : \WPGraphQL::get_allowed_post_types();
+
+			$post = get_page_by_path( $this->wp->query_vars['pagename'], 'OBJECT', $post_type ); // phpcs:ignore WordPressVIPMinimum.Functions.RestrictedFunctions.get_page_by_path_get_page_by_path
+
+			if ( ! $post instanceof WP_Post ) {
+				return null;
 			}
 
-			return ! empty( $post ) ? $this->context->get_loader( 'post' )->load_deferred( $post->ID ) : null;
+			$post = $this->validate_post( $post );
+
+			if ( ! $post ) {
+				return null;
+			}
+
+			if ( (int) get_option( 'page_for_posts', 0 ) === $post->ID ) {
+
+				if ( isset( $extra_query_vars['nodeType'] ) && 'ContentNode' === $extra_query_vars['nodeType'] ) {
+					return null;
+				}
+
+				return $this->context->get_loader( 'post_type' )->load_deferred( 'post' );
+			}
+
+			return $this->context->get_loader( 'post' )->load_deferred( $post->ID );
 		} elseif ( isset( $this->wp->query_vars['author_name'] ) ) {
 			$user = get_user_by( 'slug', $this->wp->query_vars['author_name'] );
 
 			return isset( $user->ID ) ? $this->context->get_loader( 'user' )->load_deferred( $user->ID ) : null;
 		} elseif ( isset( $this->wp->query_vars['category_name'] ) ) {
-			$node = get_term_by( 'slug', $this->wp->query_vars['category_name'], 'category' );
-
+			$term = get_category_by_path( $this->wp->query_vars['category_name'] );
+			if ( ! $term instanceof \WP_Term ) {
+				return null;
+			}
+			$node = get_term_by( 'id', $term->term_id, 'category' );
 			return isset( $node->term_id ) ? $this->context->get_loader( 'term' )->load_deferred( $node->term_id ) : null;
 
 		} elseif ( isset( $this->wp->query_vars['post_type'] ) ) {
 
 			// If the query is asking for a Page nodeType with the home uri, try and resolve it.
-			if ( '/' === $this->wp->query_vars['uri'] && ( isset( $this->wp->query_vars['nodeType'] ) && 'Page' === $this->wp->query_vars['nodeType'] ) ) {
+			if ( '/' === $this->wp->query_vars['uri'] && ( isset( $this->wp->query_vars['nodeType'] ) && 'ContentNode' === $this->wp->query_vars['nodeType'] ) ) {
 
 				// If the post type is not a page, but the uri is for the home page, we can return null now
 				if ( 'page' !== $this->wp->query_vars['post_type'] ) {
@@ -391,14 +460,24 @@ class NodeResolver {
 				return ! empty( $post ) ? $this->context->get_loader( 'post' )->load_deferred( $post->ID ) : null;
 			}
 
+			// If the query is asking for a Page nodeType with the uri, try and resolve it.
+			if ( isset( $this->wp->query_vars['nodeType'] ) && 'ContentNode' === $this->wp->query_vars['nodeType'] && isset( $this->wp->query_vars['uri'] ) ) {
+				$post_type = $this->wp->query_vars['post_type'];
+
+				$post = get_page_by_path( $this->wp->query_vars['uri'], 'OBJECT', $post_type ); // phpcs:ignore WordPressVIPMinimum.Functions.RestrictedFunctions.get_page_by_path_get_page_by_path
+
+				$post = isset( $post->ID ) ? $this->validate_post( $post ) : null;
+				return isset( $post->ID ) ? $this->context->get_loader( 'post' )->load_deferred( $post->ID ) : null;
+			}
+
 			$post_type_object = get_post_type_object( $this->wp->query_vars['post_type'] );
 
 			return ! empty( $post_type_object ) ? $this->context->get_loader( 'post_type' )->load_deferred( $post_type_object->name ) : null;
 		} else {
 			$taxonomies = get_taxonomies( [ 'show_in_graphql' => true ], 'objects' );
-			foreach ( $taxonomies as $taxonomy ) {
-				if ( isset( $this->wp->query_vars[ $taxonomy->query_var ] ) ) {
-					$node = get_term_by( 'slug', $this->wp->query_vars[ $taxonomy->query_var ], $taxonomy->name );
+			foreach ( $taxonomies as $tax_object ) {
+				if ( isset( $this->wp->query_vars[ $tax_object->query_var ] ) ) {
+					$node = get_term_by( 'slug', $this->wp->query_vars[ $tax_object->query_var ], $tax_object->name );
 
 					return isset( $node->term_id ) ? $this->context->get_loader( 'term' )->load_deferred( $node->term_id ) : null;
 				}
@@ -406,7 +485,5 @@ class NodeResolver {
 		}
 
 		return $node;
-
 	}
-
 }

@@ -2,43 +2,18 @@
 
 namespace WPGraphQL\Data\Cursor;
 
-use WP_Query;
-use wpdb;
-
 /**
  * Post Cursor
  *
  * This class generates the SQL AND operators for cursor based pagination for posts
  *
- * @package WPGraphQL\Data
+ * @package WPGraphQL\Data\Cursor
  */
-class PostObjectCursor {
-
+class PostObjectCursor extends AbstractCursor {
 	/**
-	 * The global WordPress Database instance
-	 *
-	 * @var wpdb $wpdb
+	 * @var ?\WP_Post
 	 */
-	public $wpdb;
-
-	/**
-	 * The WP_Query instance
-	 *
-	 * @var WP_Query $query
-	 */
-	public $query;
-
-	/**
-	 * The current post id which is our cursor offset
-	 *
-	 * @var int $cursor_offset
-	 */
-	public $cursor_offset;
-
-	/**
-	 * @var CursorBuilder
-	 */
-	public $builder;
+	public $cursor_node;
 
 	/**
 	 * Counter for meta value joins
@@ -48,56 +23,50 @@ class PostObjectCursor {
 	public $meta_join_alias = 0;
 
 	/**
-	 * Copy of query vars so we can modify them safely
-	 *
-	 * @var array
-	 */
-	public $query_vars = [];
-
-	/**
 	 * PostCursor constructor.
 	 *
-	 * @param WP_Query $query The WP_Query instance
+	 * @param array|\WP_Query $query_vars The query vars to use when building the SQL statement.
+	 * @param string|null     $cursor Whether to generate the before or after cursor. Default "after"
 	 */
-	public function __construct( $query ) {
-		global $wpdb;
-		$this->wpdb       = $wpdb;
-		$this->query      = $query;
-		$this->query_vars = $this->query->query_vars;
+	public function __construct( $query_vars, $cursor = 'after' ) {
+		// Handle deprecated use of $query.
+		if ( $query_vars instanceof \WP_Query ) {
+			_doing_it_wrong( __FUNCTION__, 'The first argument should be an array of $query_vars, not the WP_Query object', '1.9.0' );
+			$query_vars = $query_vars->query_vars;
+		}
 
-		/**
-		 * Get the cursor offset if any
-		 */
-		$offset              = $this->get_query_var( 'graphql_cursor_offset' );
-		$this->cursor_offset = ! empty( $offset ) ? $offset : 0;
-
-		/**
-		 * Get the direction for the query builder
-		 */
-		$compare = ! empty( $query->get( 'graphql_cursor_compare' ) ) ? $query->get( 'graphql_cursor_compare' ) : '>';
-		$compare = in_array( $compare, [ '>', '<' ], true ) ? $compare : '>';
-
-		$this->builder = new CursorBuilder( $compare );
-
+		// Initialize the class properties.
+		parent::__construct( $query_vars, $cursor );
 	}
 
 	/**
-	 * Get post instance for the cursor.
+	 * {@inheritDoc}
 	 *
-	 * This is cached internally so it does not generate extra queries
-	 *
-	 * @return mixed WP_Post|null
+	 * @return ?\WP_Post
 	 */
-	public function get_cursor_post() {
+	public function get_cursor_node() {
 		if ( ! $this->cursor_offset ) {
 			return null;
 		}
 
-		return \WP_Post::get_instance( $this->cursor_offset );
+		$post = \WP_Post::get_instance( $this->cursor_offset );
+
+		return false !== $post ? $post : null;
 	}
 
 	/**
-	 * @return string|null
+	 * @deprecated 1.9.0
+	 *
+	 * @return ?\WP_Post
+	 */
+	public function get_cursor_post() {
+		_deprecated_function( __FUNCTION__, '1.9.0', self::class . '::get_cursor_node()' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+
+		return $this->cursor_node;
+	}
+
+	/**
+	 * {@inheritDoc}
 	 */
 	public function to_sql() {
 
@@ -114,48 +83,40 @@ class PostObjectCursor {
 		);
 
 		if ( true === $orderby_should_not_convert_to_sql ) {
-			return null;
+			return '';
 		}
 
 		$sql = $this->builder->to_sql();
+
 		if ( empty( $sql ) ) {
-			return null;
+			return '';
 		}
+
 		return ' AND ' . $sql;
 	}
 
 	/**
-	 * @param string $name The name of the query var to get
-	 *
-	 * @return mixed|null
-	 */
-	public function get_query_var( string $name ) {
-		return empty( $this->query_vars[ $name ] ) ? null : $this->query_vars[ $name ];
-	}
-
-	/**
-	 * Return the additional AND operators for the where statement
-	 *
-	 * @return string|null
+	 * {@inheritDoc}
 	 */
 	public function get_where() {
-
-		/**
-		 * Ensure the cursor_offset is a positive integer
-		 */
-		if ( ! is_integer( $this->cursor_offset ) || 0 >= $this->cursor_offset ) {
-			return '';
-		}
-
-		/**
-		 * If we have bad cursor just skip...
-		 */
-		if ( ! $this->get_cursor_post() ) {
+		// If we have a bad cursor, just skip.
+		if ( ! $this->is_valid_offset_and_node() ) {
 			return '';
 		}
 
 		$orderby = $this->get_query_var( 'orderby' );
 		$order   = $this->get_query_var( 'order' );
+
+		if ( 'menu_order' === $orderby ) {
+			if ( '>' === $this->compare ) {
+
+				$order         = 'DESC';
+				$this->compare = '<';
+			} elseif ( '<' === $this->compare ) {
+				$this->compare = '>';
+				$order         = 'ASC';
+			}
+		}
 
 		if ( ! empty( $orderby ) && is_array( $orderby ) ) {
 
@@ -181,18 +142,9 @@ class PostObjectCursor {
 			$this->compare_with_date();
 		}
 
-		$this->builder->add_field( "{$this->wpdb->posts}.ID", $this->cursor_offset, 'ID' );
+		$this->builder->add_field( "{$this->wpdb->posts}.ID", $this->cursor_offset, 'ID', $order );
 
 		return $this->to_sql();
-	}
-
-	/**
-	 * Use post date based comparison
-	 *
-	 * @return void
-	 */
-	private function compare_with_date() {
-		$this->builder->add_field( "{$this->wpdb->posts}.post_date", $this->get_cursor_post()->post_date, 'DATETIME' );
 	}
 
 	/**
@@ -217,12 +169,13 @@ class PostObjectCursor {
 				break;
 		}
 
-		$value = $this->get_cursor_post()->{$by};
+		$value = $this->cursor_node->{$by} ?? null;
 
 		/**
-		 * Compare by the post field if the key matches an value
+		 * Compare by the post field if the key matches a value
 		 */
 		if ( ! empty( $value ) ) {
+
 			$this->builder->add_field( "{$this->wpdb->posts}.{$by}", $value, null, $order );
 
 			return;
@@ -234,10 +187,17 @@ class PostObjectCursor {
 		$meta_key = $this->get_meta_key( $by );
 		if ( $meta_key ) {
 			$this->compare_with_meta_field( $meta_key, $order );
-
-			return;
 		}
 
+	}
+
+	/**
+	 * Use post date based comparison
+	 *
+	 * @return void
+	 */
+	private function compare_with_date() {
+		$this->builder->add_field( "{$this->wpdb->posts}.post_date", $this->cursor_node->post_date ?? null, 'DATETIME' );
 	}
 
 	/**

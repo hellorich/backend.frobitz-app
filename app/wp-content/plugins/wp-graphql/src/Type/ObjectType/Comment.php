@@ -2,6 +2,10 @@
 
 namespace WPGraphQL\Type\ObjectType;
 
+use GraphQL\Type\Definition\ResolveInfo;
+use WPGraphQL\AppContext;
+use WPGraphQL\Model\Comment as CommentModel;
+
 /**
  * Class Comment
  *
@@ -19,7 +23,37 @@ class Comment {
 			'Comment',
 			[
 				'description' => __( 'A Comment object', 'wp-graphql' ),
+				'model'       => CommentModel::class,
 				'interfaces'  => [ 'Node', 'DatabaseIdentifier' ],
+				'connections' => [
+					'author' => [
+						'toType'               => 'Commenter',
+						'connectionInterfaces' => [ 'CommenterConnection' ],
+						'description'          => __( 'The author of the comment', 'wp-graphql' ),
+						'oneToOne'             => true,
+						'resolve'              => function ( $comment, $args, AppContext $context, ResolveInfo $info ) {
+
+							$node = null;
+
+							// try and load the user node
+							if ( ! empty( $comment->userId ) ) {
+								$node = $context->get_loader( 'user' )->load( absint( $comment->userId ) );
+							}
+
+							// If no node is loaded, fallback to the
+							// public comment author data
+							if ( ! $node || ( true === $node->isPrivate ) ) {
+								$node = ! empty( $comment->commentId ) ? $context->get_loader( 'comment_author' )->load( $comment->commentId ) : null;
+							}
+
+							return [
+								'node'   => $node,
+								'source' => $comment,
+							];
+
+						},
+					],
+				],
 				'fields'      => [
 					'id'               => [
 						'description' => __( 'The globally unique identifier for the comment object', 'wp-graphql' ),
@@ -50,7 +84,7 @@ class Comment {
 								'description' => __( 'Format of the field output', 'wp-graphql' ),
 							],
 						],
-						'resolve'     => function( \WPGraphQL\Model\Comment $comment, $args ) {
+						'resolve'     => function ( \WPGraphQL\Model\Comment $comment, $args ) {
 							if ( isset( $args['format'] ) && 'raw' === $args['format'] ) {
 								return isset( $comment->contentRaw ) ? $comment->contentRaw : null;
 							} else {

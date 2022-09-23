@@ -11,15 +11,15 @@ if ( $wpml && $current_lang ) $searchLabel .= ' (' . $this->integrations->plugin
 
 	<ul class="subsubsub">
 		<li>
-			<a href="#all" class="np-toggle-publish active"><?php _e('All', 'wp-nested-pages'); ?></a> |
+			<a href="#all" class="np-toggle-publish <?php if ( $this->status_preference == 'all' ) echo 'active'; ?>"><?php _e('All', 'wp-nested-pages'); ?></a> |
 		</li>
 
 		<li>
-			<a href="#published" class="np-toggle-publish"><?php _e('Published', 'wp-nested-pages'); ?></a> |
+			<a href="#published" class="np-toggle-publish <?php if ( $this->status_preference == 'published' ) echo 'active'; ?>"><?php _e('Published', 'wp-nested-pages'); ?></a> |
 		</li>
 
 		<li>
-			<a href="#draft" class="np-toggle-publish"><?php _e('Draft', 'wp-nested-pages'); ?></a>
+			<a href="#draft" class="np-toggle-publish <?php if ( $this->status_preference == 'draft' ) echo 'active'; ?>"><?php _e('Draft', 'wp-nested-pages'); ?></a>
 		</li>
 
 		<li> |
@@ -146,6 +146,7 @@ if ( $wpml && $current_lang ) $searchLabel .= ' (' . $this->integrations->plugin
 			<div class="select">
 				<input type="hidden" name="action" value="npListingSort">
 				<input type="hidden" name="page" value="<?php echo $this->pageURL(); ?>">
+				<?php wp_nonce_field('nestedpages-nonce', 'nonce'); ?>
 				<input type="hidden" name="post_type" value="<?php echo esc_attr($this->post_type->name); ?>">
 				<input type="submit" id="nestedpages-sort" class="button" value="<?php echo esc_attr__('Apply', 'wp-nested-pages'); ?>">
 			</div>
@@ -174,6 +175,7 @@ if ( $wpml && $current_lang ) $searchLabel .= ' (' . $this->integrations->plugin
 			</div>
 			<div class="select">
 				<input type="hidden" name="action" value="npCategoryFilter">
+				<?php wp_nonce_field('nestedpages-nonce', 'nonce'); ?>
 				<input type="hidden" name="page" value="<?php echo esc_url($this->pageURL()); ?>">
 				<input type="submit" id="nestedpages-sort" class="button" value="Apply">
 			</div>

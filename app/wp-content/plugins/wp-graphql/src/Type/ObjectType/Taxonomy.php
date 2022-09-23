@@ -2,6 +2,11 @@
 
 namespace WPGraphQL\Type\ObjectType;
 
+use GraphQL\Type\Definition\ResolveInfo;
+use WPGraphQL\AppContext;
+use WPGraphQL\Data\Connection\ContentTypeConnectionResolver;
+use WPGraphQL\Model\Taxonomy as TaxonomyModel;
+
 class Taxonomy {
 
 	/**
@@ -11,13 +16,27 @@ class Taxonomy {
 	 */
 	public static function register_type() {
 
-		$allowed_post_types = \WPGraphQL::get_allowed_post_types();
-
 		register_graphql_object_type(
 			'Taxonomy',
 			[
 				'description' => __( 'A taxonomy object', 'wp-graphql' ),
 				'interfaces'  => [ 'Node' ],
+				'model'       => TaxonomyModel::class,
+				'connections' => [
+					'connectedContentTypes' => [
+						'toType'               => 'ContentType',
+						'connectionInterfaces' => [ 'ContentTypeConnection' ],
+						'description'          => __( 'List of Content Types associated with the Taxonomy', 'wp-graphql' ),
+						'resolve'              => function ( TaxonomyModel $taxonomy, $args, AppContext $context, ResolveInfo $info ) {
+
+							$connected_post_types = ! empty( $taxonomy->object_type ) ? $taxonomy->object_type : [];
+							$resolver             = new ContentTypeConnectionResolver( $taxonomy, $args, $context, $info );
+							$resolver->set_query_arg( 'contentTypeNames', $connected_post_types );
+							return $resolver->get_connection();
+
+						},
+					],
+				],
 				'fields'      => [
 					'id'                  => [
 						'description' => __( 'The globally unique identifier of the taxonomy object.', 'wp-graphql' ),

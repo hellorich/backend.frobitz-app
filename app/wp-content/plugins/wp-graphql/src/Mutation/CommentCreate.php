@@ -36,7 +36,7 @@ class CommentCreate {
 		return [
 			'commentOn'   => [
 				'type'        => 'Int',
-				'description' => __( 'The ID of the post object the comment belongs to.', 'wp-graphql' ),
+				'description' => __( 'The database ID of the post object the comment belongs to.', 'wp-graphql' ),
 			],
 			'author'      => [
 				'type'        => 'String',
@@ -60,7 +60,7 @@ class CommentCreate {
 			],
 			'parent'      => [
 				'type'        => 'ID',
-				'description' => __( 'Parent comment of current comment.', 'wp-graphql' ),
+				'description' => __( 'Parent comment ID of current comment.', 'wp-graphql' ),
 			],
 			'date'        => [
 				'type'        => 'String',
@@ -83,7 +83,7 @@ class CommentCreate {
 			'comment' => [
 				'type'        => 'Comment',
 				'description' => __( 'The comment that was created', 'wp-graphql' ),
-				'resolve'     => function( $payload, $args, AppContext $context, ResolveInfo $info ) {
+				'resolve'     => function ( $payload, $args, AppContext $context, ResolveInfo $info ) {
 					if ( ! isset( $payload['id'] ) || ! absint( $payload['id'] ) ) {
 						return null;
 					}
@@ -117,7 +117,7 @@ class CommentCreate {
 	 * @return callable
 	 */
 	public static function mutate_and_get_payload() {
-		return function( $input, AppContext $context, ResolveInfo $info ) {
+		return function ( $input, AppContext $context, ResolveInfo $info ) {
 
 			/**
 			 * Throw an exception if there's no input
@@ -129,7 +129,7 @@ class CommentCreate {
 			$commented_on = get_post( absint( $input['commentOn'] ) );
 
 			if ( empty( $commented_on ) ) {
-				return new UserError( __( 'The ID of the node to comment on is invalid', 'wp-graphql' ) );
+				throw new UserError( __( 'The ID of the node to comment on is invalid', 'wp-graphql' ) );
 			}
 
 			/**
