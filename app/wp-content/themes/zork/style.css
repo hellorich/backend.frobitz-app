@@ -4,5 +4,17 @@ Author: Rich Cookson
 Author URI: https://richcookson.info
 Description: Makes Wordpress into a Great Underground Empire (or a headless CMS).
 Version: 1.0.0
+Requires at least: 5.8
+Tested up to: 6.0
+Requires PHP: 7.4
+Text Domain: zork
 License: GNU General Public License v2 or later
 */
+
+body {
+  align-items: center;
+  background-color:#23282D;
+  display: flex;
+  height: 100vh;
+  justify-content: center;
+}
