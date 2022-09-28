@@ -2,6 +2,10 @@
 /**
  * Zork Wordpress theme
  */
+ 
+ if (!is_main_site()) {
+   wp_redirect(network_home_url());
+ }
 ?>
 
 <!DOCTYPE html>
