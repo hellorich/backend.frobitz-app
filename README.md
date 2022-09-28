@@ -1,5 +1,7 @@
 # frobitz.app
 
+A headless CMS with using WP GraphQL
+
 ## Development environment
 
 - Lando / Docker installation
