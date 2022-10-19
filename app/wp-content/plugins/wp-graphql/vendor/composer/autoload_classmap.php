@@ -300,6 +300,8 @@ return array(
     'WPGraphQL\\Mutation\\UserUpdate' => $baseDir . '/src/Mutation/UserUpdate.php',
     'WPGraphQL\\Registry\\SchemaRegistry' => $baseDir . '/src/Registry/SchemaRegistry.php',
     'WPGraphQL\\Registry\\TypeRegistry' => $baseDir . '/src/Registry/TypeRegistry.php',
+    'WPGraphQL\\Registry\\Utils\\PostObject' => $baseDir . '/src/Registry/Utils/PostObject.php',
+    'WPGraphQL\\Registry\\Utils\\TermObject' => $baseDir . '/src/Registry/Utils/TermObject.php',
     'WPGraphQL\\Request' => $baseDir . '/src/Request.php',
     'WPGraphQL\\Router' => $baseDir . '/src/Router.php',
     'WPGraphQL\\Server\\ValidationRules\\DisableIntrospection' => $baseDir . '/src/Server/ValidationRules/DisableIntrospection.php',
