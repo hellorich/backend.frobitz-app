@@ -93,12 +93,7 @@ class CommentMutation {
 			$output_args['comment_type'] = $input['type'];
 		}
 
-		if ( ! empty( $input['status'] ) ) {
-			$output_args['comment_approved'] = $input['status'];
-		}
-
-		// Fallback to deprecated `approved` input.
-		if ( empty( $output_args['comment_approved'] ) && isset( $input['approved'] ) ) {
+		if ( ! empty( $input['approved'] ) ) {
 			$output_args['comment_approved'] = $input['approved'];
 		}
 
