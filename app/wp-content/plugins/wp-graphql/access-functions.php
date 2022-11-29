@@ -276,7 +276,6 @@ function register_graphql_enum_type( string $type_name, array $config ) {
  * @param array  $config     The Type config
  *
  * @return void
- * @since 0.1.0
  */
 function register_graphql_field( string $type_name, string $field_name, array $config ) {
 	add_action(
@@ -296,7 +295,6 @@ function register_graphql_field( string $type_name, string $field_name, array $c
  * @param array  $fields    An array of field configs
  *
  * @return void
- * @since 0.1.0
  */
 function register_graphql_fields( string $type_name, array $fields ) {
 	add_action(
@@ -308,91 +306,6 @@ function register_graphql_fields( string $type_name, array $fields ) {
 	);
 }
 
-/**
- * Adds a field to the Connection Edge between the provided 'From' Type Name and 'To' Type Name.
- *
- * @param string $from_type  The name of the Type the connection is coming from.
- * @param string $to_type    The name of the Type or Alias (the connection config's `FromFieldName`) the connection is going to.
- * @param string $field_name The name of the field to add to the connection edge.
- * @param array $config      The field config.
- *
- * @since 1.13.0
- */
-function register_graphql_edge_field( string $from_type, string $to_type, string $field_name, array $config ) : void {
-	$connection_name = ucfirst( $from_type ) . 'To' . ucfirst( $to_type ) . 'ConnectionEdge';
-
-	add_action(
-		get_graphql_register_action(),
-		function ( TypeRegistry $type_registry ) use ( $connection_name, $field_name, $config ) {
-			$type_registry->register_field( $connection_name, $field_name, $config );
-		},
-		10
-	);
-}
-
-/**
- * Adds several fields to the Connection Edge between the provided 'From' Type Name and 'To' Type Name.
- *
- * @param string $from_type The name of the Type the connection is coming from.
- * @param string $to_type   The name of the Type or Alias (the connection config's `FromFieldName`) the connection is going to.
- * @param array  $fields    An array of field configs.
- *
- * @since 1.13.0
- */
-function register_graphql_edge_fields( string $from_type, string $to_type, array $fields ) : void {
-	$connection_name = ucfirst( $from_type ) . 'To' . ucfirst( $to_type ) . 'ConnectionEdge';
-
-	add_action(
-		get_graphql_register_action(),
-		function ( TypeRegistry $type_registry ) use ( $connection_name, $fields ) {
-			$type_registry->register_fields( $connection_name, $fields );
-		},
-		10
-	);
-}
-
-/**
- * Adds an input field to the Connection Where Args between the provided 'From' Type Name and 'To' Type Name.
- *
- * @param string $from_type  The name of the Type the connection is coming from.
- * @param string $to_type    The name of the Type or Alias (the connection config's `FromFieldName`) the connection is going to.
- * @param string $field_name The name of the field to add to the connection edge.
- * @param array $config      The field config.
- *
- * @since 1.13.0
- */
-function register_graphql_connection_where_arg( string $from_type, string $to_type, string $field_name, array $config ) : void {
-	$connection_name = ucfirst( $from_type ) . 'To' . ucfirst( $to_type ) . 'ConnectionWhereArgs';
-
-	add_action(
-		get_graphql_register_action(),
-		function ( TypeRegistry $type_registry ) use ( $connection_name, $field_name, $config ) {
-			$type_registry->register_field( $connection_name, $field_name, $config );
-		},
-		10
-	);
-}
-
-/**
- * Adds several input fields to the Connection Where Args between the provided 'From' Type Name and 'To' Type Name.
- *
- * @param string $from_type The name of the Type the connection is coming from.
- * @param string $to_type   The name of the Type or Alias (the connection config's `FromFieldName`) the connection is going to.
- * @param array  $fields    An array of field configs.
- *
- * @since 1.13.0
- */
-function register_graphql_connection_where_args( string $from_type, string $to_type, array $fields ) : void {
-	$connection_name = ucfirst( $from_type ) . 'To' . ucfirst( $to_type ) . 'ConnectionWhereArgs';
-
-	add_action(
-		get_graphql_register_action(),
-		function ( TypeRegistry $type_registry ) use ( $connection_name, $fields ) {
-			$type_registry->register_fields( $connection_name, $fields );
-		},
-		10
-	);
-}
 
 /**
  * Renames a GraphQL field.
@@ -402,7 +315,6 @@ function register_graphql_connection_where_args( string $from_type, string $to_t
  * @param string $new_field_name  New field name.
  *
  * @return void
- * @since 1.3.4
  */
 function rename_graphql_field( string $type_name, string $field_name, string $new_field_name ) {
 	add_filter(
@@ -424,8 +336,6 @@ function rename_graphql_field( string $type_name, string $field_name, string $ne
  *
  * @return void
  * @throws Exception
- *
- * @since 1.3.4
  */
 function rename_graphql_type( string $type_name, string $new_type_name ) {
 	add_filter(
@@ -461,8 +371,6 @@ function rename_graphql_type( string $type_name, string $new_type_name ) {
  *
  * @throws Exception
  * @return void
- *
- * @since 0.1.0
  */
 function register_graphql_connection( array $config ) {
 	add_action(
@@ -482,8 +390,6 @@ function register_graphql_connection( array $config ) {
  *
  * @throws Exception
  * @return void
- *
- * @since 0.8.4
  */
 function register_graphql_scalar( string $type_name, array $config ) {
 	add_action(
@@ -496,59 +402,12 @@ function register_graphql_scalar( string $type_name, array $config ) {
 }
 
 /**
- * Given a Type Name, this removes the type from the entire schema
- *
- * @param string $type_name The name of the Type to remove.
- *
- * @since 1.13.0
- */
-function deregister_graphql_type( string $type_name ) : void {
-	// Prevent the type from being registered to the scheme directly.
-	add_filter(
-		'graphql_excluded_types',
-		function ( $excluded_types ) use ( $type_name ) : array {
-			// Normalize the types to prevent case sensitivity issues.
-			$type_name = strtolower( $type_name );
-			// If the type isn't already excluded, add it to the array.
-			if ( ! in_array( $type_name, $excluded_types, true ) ) {
-				$excluded_types[] = $type_name;
-			}
-
-			return $excluded_types;
-		},
-		10
-	);
-
-	// Prevent the type from being inherited as an interface.
-	add_filter(
-		'graphql_type_interfaces',
-		function ( $interfaces ) use ( $type_name ) : array {
-			// Normalize the needle and haystack to prevent case sensitivity issues.
-			$key = array_search(
-				strtolower( $type_name ),
-				array_map( 'strtolower', $interfaces ),
-				true
-			);
-			// If the type is found, unset it.
-			if ( false !== $key ) {
-				unset( $interfaces[ $key ] );
-			}
-
-			return $interfaces;
-		},
-		10
-	);
-}
-
-/**
  * Given a Type Name and Field Name, this removes the field from the TypeRegistry
  *
  * @param string $type_name  The name of the Type to remove the field from
  * @param string $field_name The name of the field to remove
  *
  * @return void
- *
- * @since 0.1.0
  */
 function deregister_graphql_field( string $type_name, string $field_name ) {
 	add_action(
@@ -569,7 +428,6 @@ function deregister_graphql_field( string $type_name, string $field_name ) {
  * @throws Exception
  *
  * @return void
- * @since 0.1.0
  */
 function register_graphql_mutation( string $mutation_name, array $config ) {
 	add_action(
@@ -622,7 +480,6 @@ function is_graphql_http_request() {
  * @param array  $config Array configuring the section. Should include: title
  *
  * @return void
- * @since 0.13.0
  */
 function register_graphql_settings_section( string $slug, array $config ) {
 	add_action(
@@ -640,7 +497,6 @@ function register_graphql_settings_section( string $slug, array $config ) {
  * @param array  $config The config for the settings field being registered
  *
  * @return void
- * @since 0.13.0
  */
 function register_graphql_settings_field( string $group, array $config ) {
 	add_action(
@@ -662,7 +518,6 @@ function register_graphql_settings_field( string $group, array $config ) {
  *                                    merged into the debug entry.
  *
  * @return void
- * @since 0.14.0
  */
 function graphql_debug( $message, $config = [] ) {
 	$debug_backtrace     = debug_backtrace(); // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_debug_backtrace
@@ -699,7 +554,6 @@ function graphql_debug( $message, $config = [] ) {
  * @param string $type_name The name of the type to validate
  *
  * @return bool
- * @since 0.14.0
  */
 function is_valid_graphql_name( string $type_name ) {
 	if ( preg_match( '/^\d/', $type_name ) ) {
@@ -716,7 +570,6 @@ function is_valid_graphql_name( string $type_name ) {
  * @param array  $fields Array of field configs to register to the group
  *
  * @return void
- * @since 0.13.0
  */
 function register_graphql_settings_fields( string $group, array $fields ) {
 	add_action(
@@ -735,7 +588,6 @@ function register_graphql_settings_fields( string $group, array $fields ) {
  * @param string $section_name The settings group section that the option belongs to
  *
  * @return mixed|string|int|boolean
- * @since 0.13.0
  */
 function get_graphql_setting( string $option_name, $default = '', $section_name = 'graphql_general_settings' ) {
 
@@ -801,8 +653,6 @@ function graphql_get_endpoint_url() {
  * Polyfill for PHP versions below 7.3
  *
  * @return int|string|null
- *
- * @since 0.10.0
  */
 if ( ! function_exists( 'array_key_first' ) ) {
 
@@ -823,8 +673,6 @@ if ( ! function_exists( 'array_key_first' ) ) {
  * Polyfill for PHP versions below 7.3
  *
  * @return mixed|string|int
- *
- * @since 0.10.0
  */
 if ( ! function_exists( 'array_key_last' ) ) {
 

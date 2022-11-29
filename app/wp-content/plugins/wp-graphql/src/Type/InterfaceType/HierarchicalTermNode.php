@@ -1,7 +1,6 @@
 <?php
 namespace WPGraphQL\Type\InterfaceType;
 
-use Exception;
 use WPGraphQL\Registry\TypeRegistry;
 
 /**
@@ -17,18 +16,11 @@ class HierarchicalTermNode {
 	 * @param TypeRegistry $type_registry
 	 *
 	 * @return void
-	 * @throws Exception
 	 */
-	public static function register_type( TypeRegistry $type_registry ): void {
+	public static function register_type( TypeRegistry $type_registry ) {
 
 		register_graphql_interface_type( 'HierarchicalTermNode', [
 			'description' => __( 'Term node with hierarchical (parent/child) relationships', 'wp-graphql' ),
-			'interfaces'  => [
-				'Node',
-				'TermNode',
-				'DatabaseIdentifier',
-				'HierarchicalNode',
-			],
 			'fields'      => [
 				'parentId'         => [
 					'type'        => 'ID',

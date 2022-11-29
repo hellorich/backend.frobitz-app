@@ -34,10 +34,9 @@ class CommentCreate {
 	 */
 	public static function get_input_fields() {
 		return [
-			'approved'    => [
-				'type'              => 'String',
-				'description'       => __( 'The approval status of the comment.', 'wp-graphql' ),
-				'deprecationReason' => __( 'Deprecated in favor of the status field', 'wp-graphql' ),
+			'commentOn'   => [
+				'type'        => 'Int',
+				'description' => __( 'The database ID of the post object the comment belongs to.', 'wp-graphql' ),
 			],
 			'author'      => [
 				'type'        => 'String',
@@ -51,29 +50,25 @@ class CommentCreate {
 				'type'        => 'String',
 				'description' => __( 'The url of the comment\'s author.', 'wp-graphql' ),
 			],
-			'commentOn'   => [
-				'type'        => 'Int',
-				'description' => __( 'The database ID of the post object the comment belongs to.', 'wp-graphql' ),
-			],
 			'content'     => [
 				'type'        => 'String',
 				'description' => __( 'Content of the comment.', 'wp-graphql' ),
 			],
-			'date'        => [
+			'type'        => [
 				'type'        => 'String',
-				'description' => __( 'The date of the object. Preferable to enter as year/month/day ( e.g. 01/31/2017 ) as it will rearrange date as fit if it is not specified. Incomplete dates may have unintended results for example, "2017" as the input will use current date with timestamp 20:17 ', 'wp-graphql' ),
+				'description' => __( 'Type of comment.', 'wp-graphql' ),
 			],
 			'parent'      => [
 				'type'        => 'ID',
 				'description' => __( 'Parent comment ID of current comment.', 'wp-graphql' ),
 			],
-			'status'      => [
-				'type'        => 'CommentStatusEnum',
-				'description' => __( 'The approval status of the comment', 'wp-graphql' ),
-			],
-			'type'        => [
+			'date'        => [
 				'type'        => 'String',
-				'description' => __( 'Type of comment.', 'wp-graphql' ),
+				'description' => __( 'The date of the object. Preferable to enter as year/month/day ( e.g. 01/31/2017 ) as it will rearrange date as fit if it is not specified. Incomplete dates may have unintended results for example, "2017" as the input will use current date with timestamp 20:17 ', 'wp-graphql' ),
+			],
+			'approved'    => [
+				'type'        => 'String',
+				'description' => __( 'The approval status of the comment.', 'wp-graphql' ),
 			],
 		];
 	}
