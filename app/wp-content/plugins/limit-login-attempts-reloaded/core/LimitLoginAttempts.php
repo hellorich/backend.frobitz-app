@@ -357,12 +357,12 @@ class Limit_Login_Attempts {
 
 	public function load_admin_scripts() {
 
+	    if( !empty( $_REQUEST['page'] ) && $_REQUEST['page'] !== $this->_options_page_slug ) return;
+
 		wp_enqueue_script('jquery-ui-accordion');
 		wp_enqueue_style('llar-jquery-ui', LLA_PLUGIN_URL.'assets/css/jquery-ui.css');
 
-		wp_enqueue_style( 'llar-charts', LLA_PLUGIN_URL.'assets/css/Chart.min.css' );
-		wp_enqueue_script( 'llar-charts', LLA_PLUGIN_URL . 'assets/js/Chart.bundle.min.js' );
-		wp_enqueue_script( 'llar-charts-gauge', LLA_PLUGIN_URL . 'assets/js/chartjs-gauge.js' );
+		wp_enqueue_script( 'llar-charts', LLA_PLUGIN_URL . 'assets/js/chart.umd.js' );
 	}
 
 	public function check_whitelist_ips( $allow, $ip ) {
@@ -659,7 +659,7 @@ class Limit_Login_Attempts {
 	    $plugin_data = get_plugin_data( LLA_PLUGIN_DIR . '/limit-login-attempts-reloaded.php' );
 
 		wp_enqueue_style( 'lla-main', LLA_PLUGIN_URL . 'assets/css/limit-login-attempts.css', array(), $plugin_data['Version'] );
-		wp_enqueue_script( 'lla-main', LLA_PLUGIN_URL . 'assets/js/limit-login-attempts.js', array(), $plugin_data['Version'] );
+//		wp_enqueue_script( 'lla-main', LLA_PLUGIN_URL . 'assets/js/limit-login-attempts.js', array(), $plugin_data['Version'] );
 
 		if( !empty( $_REQUEST['page'] ) && $_REQUEST['page'] === $this->_options_page_slug ) {
 
@@ -2380,20 +2380,22 @@ into a must-use (MU) folder.</i></p>', 'limit-login-attempts-reloaded' );
 
 		if( $log ) {
 
-		    ob_start();
-
 			$date_format = get_option('date_format') . ' ' . get_option('time_format');
 			$countries_list = LLA_Helpers::get_countries_list();
-			?>
 
-			<?php if( $log['items'] ) : ?>
+		    ob_start();
+			if( empty( $log['items'] ) && !empty( $log['offset'] ) ) : ?>
+			<?php elseif( $log['items'] ) : ?>
 
 				<?php foreach ( $log['items'] as $item ) :
                     $country_name = !empty( $countries_list[$item['country_code']] ) ? $countries_list[$item['country_code']] : '';
                     ?>
                     <tr>
                         <td class="llar-col-nowrap"><?php echo get_date_from_gmt( date( 'Y-m-d H:i:s', $item['created_at'] ), $date_format ); ?></td>
-                        <td><div class="llar-log-country-flag"><img title="<?php echo esc_attr( $country_name ); ?>" src="<?php echo LLA_PLUGIN_URL . 'assets/img/flags/' . esc_attr( $item['country_code'] ) .'.png'?>">&nbsp;<?php echo esc_html( $item['ip'] ); ?></div></td>
+                        <td><div class="llar-log-country-flag">
+                                <span class="llar-tooltip" data-text="<?php echo esc_attr( $country_name ); ?>">
+                                    <img src="<?php echo LLA_PLUGIN_URL . 'assets/img/flags/' . esc_attr( $item['country_code'] ) .'.png'?>">
+                                </span>&nbsp;<span><?php echo esc_html( $item['ip'] ); ?></span></div></td>
                         <td><?php echo esc_html( $item['gateway'] ); ?></td>
                         <td><?php echo (is_null($item['login'])) ? '-' : esc_html( $item['login'] ); ?></td>
                         <td><?php echo (is_null($item['result'])) ? '-' : esc_html( $item['result'] ); ?></td>
