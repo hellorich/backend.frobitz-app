@@ -4,7 +4,7 @@ Tags: GraphQL, API, Gatsby, Headless, Decoupled, React, Nextjs, Vue, Apollo, RES
 Requires at least: 5.0
 Tested up to: 6.1
 Requires PHP: 7.1
-Stable tag: 1.12.2
+Stable tag: 1.13.7
 License: GPL-3
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
 
@@ -86,6 +86,53 @@ Integrating Appsero SDK **DOES NOT IMMEDIATELY** start gathering data, **without
 Learn more about how [Appsero collects and uses this data](https://appsero.com/privacy-policy/).
 
 == Upgrade Notice ==
+
+= 1.13.0 =
+
+The `ContentRevisionUnion` Union has been removed, and the `RootQuery.revisions` and `User.revisions` connections that used to resolve to this Type now resolve to the `ContentNode` Interface type.
+
+This is _techically_ a Schema Breaking change, however the behavior for most users querying these fields should remain the same.
+
+For example, this query worked before, and still works now:
+
+```graphql
+{
+  viewer {
+    revisions {
+      nodes {
+        __typename
+        ... on Post {
+          id
+          uri
+          isRevision
+        }
+        ... on Page {
+          id
+          uri
+          isRevision
+        }
+      }
+    }
+  }
+  revisions {
+    nodes {
+      __typename
+      ... on Post {
+        id
+        uri
+        isRevision
+      }
+      ... on Page {
+        id
+        uri
+        isRevision
+      }
+    }
+  }
+}
+```
+
+If you were using a fragment to reference: `...on UserToContentRevisionUnionConnection` or `...on RootQueryToContentRevisionUnionConnection` you would need to update those references to `...on UserToRevisionsConnection` and `...on RootQueryToRevisionsConnection` respectively.
 
 = 1.12.0 =
 
@@ -184,6 +231,182 @@ The `uri` field was non-null on some Types in the Schema but has been changed to
 Composer dependencies are no longer versioned in Github. Recommended install source is WordPress.org or using Composer to get the code from Packagist.org or WPackagist.org.
 
 == Changelog ==
+
+= 1.13.7 =
+
+**Chores / Bugfixes**
+
+- ([#2661](https://github.com/wp-graphql/wp-graphql/pull/2661)): chore(deps): bump simple-git from 3.10.0 to 3.15.1
+- ([#2665](https://github.com/wp-graphql/wp-graphql/pull/2665)): chore(deps): bump decode-uri-component from 0.2.0 to 0.2.2
+- ([#2668](https://github.com/wp-graphql/wp-graphql/pull/2668)): test: Multiple domain tests. Thanks @markkelnar!
+- ([#2669](https://github.com/wp-graphql/wp-graphql/pull/2669)): ci: Use last working version of xdebug for php7. Thanks @markkelnar!
+- ([#2671](https://github.com/wp-graphql/wp-graphql/pull/2671)): fix: correct regressions to field formatting forcing snake_cace and UcFirst fields to be lcfirst/camelCase
+- ([#2672](https://github.com/wp-graphql/wp-graphql/pull/2672)): chore: update lint-pr workflow
+
+
+= 1.13.6 =
+
+**New Feature**
+
+- ([#2657](https://github.com/wp-graphql/wp-graphql/pull/2657)): feat: pass unfiltered args through to filters in the ConnectionResolver classes. Thanks @kidunot89!
+- ([#2655](https://github.com/wp-graphql/wp-graphql/pull/2655)): feat: add `includeDefaultInterfaces` to connection config, allowing connections to be registered without the default `Connection` and `Edge` interfaces applied.. Thanks @justlevine!
+
+**Chores / Bugfixes**
+
+- ([#2656](https://github.com/wp-graphql/wp-graphql/pull/2656)): chore: clean up NodeResolver::resolve_uri() logic. Thanks @justlevine!
+
+= 1.13.5 =
+
+**Chores / Bugfixes**
+
+- ([#2647](https://github.com/wp-graphql/wp-graphql/pull/2647)): fix: properly register the node field on ConnectionEdge interfaces
+- ([#2645](https://github.com/wp-graphql/wp-graphql/pull/2645)): fix: regression where fields of an object type were forced to be camelCase. This allows snake_case fields again.
+
+
+= 1.13.4 =
+
+**Chores / Bugfixes**
+
+- ([#2631](https://github.com/wp-graphql/wp-graphql/pull/2631)): simplify (DRY up) connection interface registration.
+
+= 1.13.3 =
+
+- fix: update versions for WordPress.org deploys
+
+= 1.13.2 =
+
+**Chores / Bugfixes**
+
+- ([#2627](https://github.com/wp-graphql/wp-graphql/pull/2627)): fix: Fixes regression where Connection classes were moved to another namespace. This adds deprecated classes back to the old namespace to extend the new classes. Thanks @justlevine!
+
+= 1.13.1 =
+
+**Chores / Bugfixes**
+
+- ([#2625](https://github.com/wp-graphql/wp-graphql/pull/2625)): fix: Fixes a regression to v1.13.0 where mutations registered with an uppercase first letter weren't properly being transformed to a lowercase first letter when the field is added to the Schema.
+
+
+= 1.13.0 =
+
+**Possible Breaking Change for some users**
+
+The work to introduce the `Connection` and `Edge` (and other) Interfaces required the `User.revisions` and `RootQuery.revisions` connection to
+change from resolving to the `ContentRevisionUnion` type and instead resolve to the `ContentNode` type.
+
+We believe that it's highly likely that most users will not be impacted by this change.
+
+Any queries that directly reference the following types:
+
+- `...on UserToContentRevisionUnionConnection`
+- `...on RootQueryToContentRevisionUnionConnection`
+
+Would need to be updated to reference these types instead:
+
+- `...on UserToRevisionsConnection`
+- `...on RootQueryToRevisionsConnection`
+
+For example:
+
+**BEFORE**
+
+```graphql
+{
+  viewer {
+    revisions {
+      ... on UserToContentRevisionUnionConnection {
+        nodes {
+          __typename
+          ... on Post {
+            id
+            uri
+            isRevision
+          }
+          ... on Page {
+            id
+            uri
+            isRevision
+          }
+        }
+      }
+    }
+  }
+  revisions {
+    ... on RootQueryToContentRevisionUnionConnection {
+      nodes {
+        __typename
+        ... on Post {
+          id
+          uri
+          isRevision
+        }
+        ... on Page {
+          id
+          uri
+          isRevision
+        }
+      }
+    }
+  }
+}
+```
+
+**AFTER**
+
+```graphql
+{
+  viewer {
+    revisions {
+      ... on UserToRevisionsConnection {
+        nodes {
+          __typename
+          ... on Post {
+            id
+            uri
+            isRevision
+          }
+          ... on Page {
+            id
+            uri
+            isRevision
+          }
+        }
+      }
+    }
+  }
+  revisions {
+    ... on RootQueryToRevisionsConnection {
+      nodes {
+        __typename
+        ... on Post {
+          id
+          uri
+          isRevision
+        }
+        ... on Page {
+          id
+          uri
+          isRevision
+        }
+      }
+    }
+  }
+}
+```
+
+**New Features**
+
+- ([#2617](https://github.com/wp-graphql/wp-graphql/pull/2617): feat: Introduce Connection, Edge and other common Interfaces.
+- ([#2563](https://github.com/wp-graphql/wp-graphql/pull/2563): feat: refactor mutation registration to use new `WPMutationType`. Thanks @justlevine!
+- ([#2557](https://github.com/wp-graphql/wp-graphql/pull/2557): feat: add `deregister_graphql_type()` access function and corresponding `graphql_excluded_types` filter. Thanks @justlevine!
+- ([#2546](https://github.com/wp-graphql/wp-graphql/pull/2546): feat: Add new `register_graphql_edge_fields()` and `register_graphql_connection_where_args()` access functions. Thanks @justlevine!
+
+**Chores / Bugfixes**
+
+- ([#2622](https://github.com/wp-graphql/wp-graphql/pull/2622): fix: deprecate the `previews` field for non-publicly queryable post types, and limit the `Previewable` Interface to publicly queryable post types.
+- ([#2614](https://github.com/wp-graphql/wp-graphql/pull/2614): chore(deps): bump loader-utils from 2.0.3 to 2.0.4.
+- ([#2540](https://github.com/wp-graphql/wp-graphql/pull/2540): fix: deprecate `Comment.approved` field in favor of `Comment.status: CommentStatusEnum`. Thanks @justlevine!
+- ([#2542](https://github.com/wp-graphql/wp-graphql/pull/2542): Move parse_request logic in `NodeResolver::resolve_uri()` to its own method. Thanks @justlevine!
+
 
 = 1.12.2 =
 

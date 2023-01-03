@@ -7,13 +7,13 @@ use GraphQL\Type\Definition\ResolveInfo;
 use WP_Post_Type;
 use WPGraphQL;
 use WPGraphQL\AppContext;
-use WPGraphQL\Connection\Comments;
-use WPGraphQL\Connection\PostObjects;
-use WPGraphQL\Connection\TermObjects;
 use WPGraphQL\Data\Connection\CommentConnectionResolver;
 use WPGraphQL\Data\Connection\PostObjectConnectionResolver;
 use WPGraphQL\Data\Connection\TermObjectConnectionResolver;
 use WPGraphQL\Model\Post;
+use WPGraphQL\Type\Connection\Comments;
+use WPGraphQL\Type\Connection\PostObjects;
+use WPGraphQL\Type\Connection\TermObjects;
 
 /**
  * Class PostObject
@@ -136,6 +136,7 @@ class PostObject {
 				'toType'             => $post_type_object->graphql_single_name,
 				'connectionTypeName' => ucfirst( $post_type_object->graphql_single_name ) . 'ToPreviewConnection',
 				'oneToOne'           => true,
+				'deprecationReason'  => ( true === $post_type_object->publicly_queryable || true === $post_type_object->public ) ? null : sprintf( __( 'The "%s" Type is not publicly queryable and does not support previews. This field will be removed in the future.', 'wp-graphql' ), WPGraphQL\Utils\Utils::format_type_name( $post_type_object->graphql_single_name ) ),
 				'resolve'            => function ( Post $post, $args, AppContext $context, ResolveInfo $info ) {
 					if ( $post->isRevision ) {
 						return null;
@@ -259,6 +260,11 @@ class PostObject {
 
 		if ( true === $post_type_object->public ) {
 			$interfaces[] = 'UniformResourceIdentifiable';
+		}
+
+		// Only post types that are publicly_queryable are previewable
+		if ( 'attachment' !== $post_type_object->name && ( true === $post_type_object->publicly_queryable || true === $post_type_object->public ) ) {
+			$interfaces[] = 'Previewable';
 		}
 
 		if ( post_type_supports( $post_type_object->name, 'title' ) ) {
