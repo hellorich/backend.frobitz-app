@@ -1,6 +1,6 @@
 # frobitz.app
 
-A headless CMS with using WP GraphQL
+A headless CMS using WP GraphQL and Wordpress Mulisite
 
 ## Development environment
 
