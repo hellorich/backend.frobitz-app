@@ -22,3 +22,9 @@ You can run commands on the production server using Wordpress CLI's ssh capabili
 ```
 wp --ssh=[username]@[servername][path/to/wordpress/root]
 ```
+
+
+## Todo
+
+- wp command is a requirement for the build script to run
+- permissions on build script check
