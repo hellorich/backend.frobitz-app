@@ -1,6 +1,6 @@
 # frobitz.app
 
-A headless CMS using WP GraphQL and Wordpress Mulisite
+A headless CMS using WP GraphQL and Wordpress Multisite
 
 ## Development environment
 
@@ -8,7 +8,7 @@ A headless CMS using WP GraphQL and Wordpress Mulisite
 
 ### Wordpress CLI
 
-A tooling route is set in the Lando config so Wordpress CLI can be used inside the appserver. Documentation for Wordpress CLI can be found [here](https://make.wordpress.org/cli/handbook/).
+A tooling route is set in the Lando config so Wordpress CLI can be used inside the app server. Documentation for Wordpress CLI can be found [here](https://make.wordpress.org/cli/handbook/).
 
 ## Production environment
 
