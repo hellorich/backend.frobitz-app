@@ -1,6 +1,6 @@
 # frobitz.app
 
-A headless CMS using WP GraphQL and Wordpress Multisite to deliver content to Gatsby or Next.js front-ends.
+An experimental headless multisite WordPress application to connect initially to a Gatsby frontend and in future Next.js - tested with [frontend.frobitz-app](https://github.com/hellorich/frontend.frobitz-app)
 
 ## External resources
 
