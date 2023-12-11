@@ -1,9 +1,6 @@
 # Ignore file system
 .DS_Store
 
-# Ignore Nova editor condig
-.nova
-
 # Ignore wp-config.php
 wp-config.php
 /vendor/
