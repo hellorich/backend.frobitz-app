@@ -1,6 +1,6 @@
 # frobitz.app
 
-An experimental headless multisite WordPress application to connect initially to a Gatsby frontend and in future Next.js - tested with [frontend.frobitz-app](https://github.com/hellorich/frontend.frobitz-app)
+An experimental headless multisite WordPress application to connect initially to a Gatsby frontend and in future Next.js - tested with [frontend.frobitz-app](https://trello.com/b/gvtLZCkf/frobitzapp)
 
 ## External resources
 
