@@ -26,6 +26,13 @@
       font-size: 14px;
       float: right;
       line-height: 2;
+
+      .llar-tooltip {
+        &:before {
+          right: 0;
+          left: auto;
+        }
+      }
     }
   }
 
@@ -145,6 +152,57 @@
       }
       tr:nth-child(even) {
         background-color: #f9f9f9;
+      }
+
+      .table-inline-preloader {
+        text-align: center;
+
+        &.hidden {
+          display: none;
+        }
+
+        tr {
+          td {
+            padding: 5px;
+
+            .load-more-button {
+              a {
+                text-decoration-style: dashed;
+              }
+            }
+            .preloader-row {
+              display: none;
+              align-items: center;
+
+              .preloader-icon {
+                background-image: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHN0eWxlPSJtYXJnaW46YXV0bztiYWNrZ3JvdW5kOjAgMCIgd2lkdGg9IjY0IiBoZWlnaHQ9IjY0IiB2aWV3Qm94PSIwIDAgMTAwIDEwMCIgcHJlc2VydmVBc3BlY3RSYXRpbz0ieE1pZFlNaWQiIGRpc3BsYXk9ImJsb2NrIj48Y2lyY2xlIGN4PSI1MCIgY3k9IjUwIiBmaWxsPSJub25lIiBzdHJva2U9IiNlM2UzZTMiIHN0cm9rZS13aWR0aD0iNSIgcj0iMzIiIHN0cm9rZS1kYXNoYXJyYXk9IjE1MC43OTY0NDczNzIzMTAwNyA1Mi4yNjU0ODI0NTc0MzY2OSIgdHJhbnNmb3JtPSJyb3RhdGUoMTQ0LjAxIDUwIDUwKSI+PGFuaW1hdGVUcmFuc2Zvcm0gYXR0cmlidXRlTmFtZT0idHJhbnNmb3JtIiB0eXBlPSJyb3RhdGUiIHJlcGVhdENvdW50PSJpbmRlZmluaXRlIiBkdXI9IjFzIiB2YWx1ZXM9IjAgNTAgNTA7MzYwIDUwIDUwIiBrZXlUaW1lcz0iMDsxIi8+PC9jaXJjbGU+PC9zdmc+');
+                background-size: 100%;
+                background-repeat: no-repeat;
+                width: 30px;
+                height: 30px;
+                display: inline-block;
+              }
+              .preloader-text {
+                color: #999;
+              }
+            }
+          }
+        }
+
+        &.loading {
+          //display: table-footer-group;
+
+          tr {
+            td {
+              .load-more-button {
+                display: none;
+              }
+              .preloader-row {
+                display: inline-flex;
+              }
+            }
+          }
+        }
       }
     }
     .llar-table-header {
@@ -333,6 +391,34 @@
     min-width: 243px;
   }
 
+  .llar-test-email-notification-btn {
+    text-decoration: none;
+    margin-left: 15px;
+    font-weight: 600;
+  }
+
+  .llar-test-email-notification-loader {
+    .llar-app-ajax-spinner {
+      float: none;
+      margin: -2px 5px 0;
+      display: none;
+    }
+
+    &.loading {
+      .llar-app-ajax-spinner {
+        display: inline-block;
+        visibility: visible;
+      }
+    }
+
+    .msg {
+      margin-left: 5px;
+      &.success {
+        color: #71c21b;
+      }
+    }
+  }
+
   .llar-protect-notice {
     font-size: 15px;
     color: #848484;
@@ -378,6 +464,14 @@
 
     &.active {
       display: table-row;
+    }
+  }
+}
+
+.llar-settings-wrap {
+  .form-table {
+    th {
+      width: 220px;
     }
   }
 }
@@ -702,7 +796,7 @@
 .dashboard_page_llar-welcome,
 .toplevel_page_limit-login-attempts {
   .update-nag,
-  .notice {
+  .notice:not(.llar-notice-review) {
     display: none;
   }
   .video-container {
@@ -722,30 +816,54 @@
 }
 
 .llar-tooltip {
-  text-decoration: underline;
-  text-decoration-style: dotted;
+  text-decoration: none;
   cursor: pointer;
   position: relative;
+  color: #aeaeae;
+
+  span {
+    vertical-align: middle;
+  }
 
   &:before {
     content: attr(data-text);
     position: absolute;
-    width: 200px;
-    padding: 5px;
-    background-color: rgba(#000, 0.8);
-    color: #fff;
+    width: max-content;
+    max-width: 300px;
+    padding: 10px;
+    background-color: #fff;
+    color: #575757;
+    border-radius: 7px;
+    box-shadow: 0 0 15px 6px rgba(#000, 0.1);
     font-size: 13px;
-    top: 100%;
+    top: calc(100% + 5px);
+    left: -5px;
     z-index: 999;
     visibility: hidden;
     opacity: 0;
     transition: all .2s;
-    font-weight: 300;
+    font-weight: 400;
     cursor: auto;
+    font-style: normal;
+  }
+
+  &:after {
+    content: "";
+    width: 10px;
+    height: 10px;
+    background-color: white;
+    display: block;
+    position: absolute;
+    top: calc(100% + 1px);
+    left: 5px;
+    transform: rotate(45deg);
+    z-index: 999;
+    visibility: hidden;
+    opacity: 0;
   }
 
   &:hover {
-    &:before {
+    &:before, &:after {
       visibility: visible;
       opacity: 1;
     }
@@ -765,28 +883,32 @@
 //    }
 //  }
 //}
+
+#wp-admin-bar-llar-root {
+  #wp-admin-bar-llar-root-premium {
+    a {
+      color: orange;
+    }
+  }
+}
+
 #toplevel_page_limit-login-attempts {
   .wp-menu-image.svg {
     background-size: 25px auto !important;
     margin-top: 7px;
   }
-}
 
-.llar-alert-icon-animation {
-  animation-duration: 10s;
-  animation-timing-function: ease-out;
-  animation-delay: 3s;
-  animation-iteration-count: infinite;
-  animation-direction: normal;
-  animation-fill-mode: both;
-  animation-play-state: running;
-  animation-name: shake;
+  .llar-submenu-premium-item {
+    a {
+      color: orange;
+    }
+  }
 }
 
 #menu-settings {
   li {
     position: relative;
-    .llar-alert-icon-animation {
+    .llar-alert-icon {
       position: absolute;
       right: 5px;
       top: 7px;
@@ -797,24 +919,12 @@
   }
 }
 
-@keyframes shake {
-  1%, 9% {
-    transform: translate3d(-1px, 0, 0);
-  }
-
-  2%, 8% {
-    transform: translate3d(2px, 0, 0);
-  }
-
-  3%, 5%, 7% {
-    transform: translate3d(-3px, 0, 0);
-  }
-
-  4%, 6% {
-    transform: translate3d(3px, 0, 0);
-  }
+.llar-auto-update-notice {
+  display: block !important;
 }
 
 @import "dashboard-page";
 @import "admin-dashboard-widgets";
 @import "onboarding-popup";
+@import "premium-tab";
+@import "help-page";

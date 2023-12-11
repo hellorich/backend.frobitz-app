@@ -1,25 +1,29 @@
 <?php
 
+use LLAR\Core\Config;
+use LLAR\Core\Helpers;
+use LLAR\Core\LimitLoginAttempts;
+
 if( !defined( 'ABSPATH' ) ) exit();
 
 /**
- * @var $this Limit_Login_Attempts
+ * @var $this LimitLoginAttempts
  */
 
-$lockouts_total = $this->get_option( 'lockouts_total' );
-$lockouts = $this->get_option( 'login_lockouts' );
+$lockouts_total = Config::get( 'lockouts_total' );
+$lockouts = Config::get( 'login_lockouts' );
 $lockouts_now = is_array( $lockouts ) ? count( $lockouts ) : 0;
 
-$white_list_ips = $this->get_option( 'whitelist' );
+$white_list_ips = Config::get( 'whitelist' );
 $white_list_ips = ( is_array( $white_list_ips ) && !empty( $white_list_ips ) ) ? implode( "\n", $white_list_ips ) : '';
 
-$white_list_usernames = $this->get_option( 'whitelist_usernames' );
+$white_list_usernames = Config::get( 'whitelist_usernames' );
 $white_list_usernames = ( is_array( $white_list_usernames ) && !empty( $white_list_usernames ) ) ? implode( "\n", $white_list_usernames ) : '';
 
-$black_list_ips = $this->get_option( 'blacklist' );
+$black_list_ips = Config::get( 'blacklist' );
 $black_list_ips = ( is_array( $black_list_ips ) && !empty( $black_list_ips ) ) ? implode( "\n", $black_list_ips ) : '';
 
-$black_list_usernames = $this->get_option( 'blacklist_usernames' );
+$black_list_usernames = Config::get( 'blacklist_usernames' );
 $black_list_usernames = ( is_array( $black_list_usernames ) && !empty( $black_list_usernames ) ) ? implode( "\n", $black_list_usernames ) : '';
 ?>
 
@@ -74,7 +78,7 @@ $black_list_usernames = ( is_array( $black_list_usernames ) && !empty( $black_li
         </tr>
         <tr>
             <th scope="row"
-                valign="top"><?php echo __( 'Blocklist', 'limit-login-attempts-reloaded' ); ?></th>
+                valign="top"><?php echo __( 'Denylist', 'limit-login-attempts-reloaded' ); ?></th>
             <td>
                 <div class="field-col">
                     <p class="description"><?php _e( 'One IP or IP range (1.2.3.4-5.6.7.8) per line', 'limit-login-attempts-reloaded' ); ?></p>
@@ -84,6 +88,10 @@ $black_list_usernames = ( is_array( $black_list_usernames ) && !empty( $black_li
                     <p class="description"><?php _e( 'One Username per line', 'limit-login-attempts-reloaded' ); ?></p>
                     <textarea name="lla_blacklist_usernames" rows="10" cols="50"><?php echo esc_textarea( $black_list_usernames ); ?></textarea>
                 </div>
+                <p class="description" style="font-weight: 600;"><?php echo sprintf(
+		                __( 'Automate your denylist with IP intelligence when you <a href="%s" target="_blank">upgrade to premium</a>.', 'limit-login-attempts-reloaded' ),
+                        'https://www.limitloginattempts.com/info.php?from=plugin-denylist'
+                    ); ?></p>
             </td>
         </tr>
     </table>
@@ -93,11 +101,11 @@ $black_list_usernames = ( is_array( $black_list_usernames ) && !empty( $black_li
     </p>
 </form>
 <?php
-$log = $this->get_option( 'logged' );
+$log = Config::get( 'logged' );
 
-$log = LLA_Helpers::sorted_log_by_date( $log );
+$log = Helpers::sorted_log_by_date( $log );
 
-$lockouts = (array)$this->get_option('lockouts');
+$lockouts = (array) Config::get('lockouts');
 
 if( is_array( $log ) && ! empty( $log ) ) { ?>
     <h3><?php echo __( 'Lockout log', 'limit-login-attempts-reloaded' ); ?></h3>
@@ -107,8 +115,8 @@ if( is_array( $log ) && ! empty( $log ) ) { ?>
         <p class="submit">
             <input class="button" name="submit" value="<?php echo __( 'Clear Log', 'limit-login-attempts-reloaded' ); ?>"
                    type="submit"/>
-            <span style="margin-left: 15px;"><?php echo sprintf(
-                    __( 'Receive enhanced logs and visual metrics when you <a href="%s" target="_blank">upgrade to our cloud app</a>', 'limit-login-attempts-reloaded' ),
+            <span style="margin-left: 15px; font-weight: 600;"><?php echo sprintf(
+                    __( '<a href="%s" target="_blank">Upgrade today</a> to optimize or unload your DB by moving logs to the cloud.', 'limit-login-attempts-reloaded' ),
                     'https://www.limitloginattempts.com/info.php?from=plugin-clear-log' );
             ?></span>
         </p>
@@ -126,17 +134,17 @@ if( is_array( $log ) && ! empty( $log ) ) { ?>
 
 			<?php foreach ( $log as $date => $user_info ) : ?>
                 <tr>
-                    <td class="limit-login-date"><?php echo date_i18n( 'F d, Y H:i', $date ); ?></td>
+                    <td class="limit-login-date"><?php echo date_i18n(__( 'F d, Y H:i', 'limit-login-attempts-reloaded' ), $date ); ?></td>
                     <td class="limit-login-ip">
 						<?php echo esc_html( $user_info['ip'] ); ?>
                     </td>
-                    <td class="limit-login-max"><?php echo esc_html( $user_info['username'] ) . ' (' . esc_html( $user_info['counter'] ) .' lockouts)'; ?></td>
+                    <td class="limit-login-max"><?php echo esc_html( $user_info['username'] ) . ' (' . esc_html( $user_info['counter'] ) . __( ' lockouts', 'limit-login-attempts-reloaded' ) . ')'; ?></td>
                     <td class="limit-login-gateway"><?php echo esc_html( $user_info['gateway'] ); ?></td>
                     <td>
 						<?php if ( !empty( $lockouts[ $user_info['ip'] ] ) && $lockouts[ $user_info['ip'] ] > time() ) : ?>
-                            <a href="#" class="button limit-login-unlock" data-ip="<?=esc_attr($user_info['ip'])?>" data-username="<?=esc_attr($user_info['username'])?>">Unlock</a>
+                            <a href="#" class="button limit-login-unlock" data-ip="<?=esc_attr($user_info['ip'])?>" data-username="<?=esc_attr($user_info['username'])?>"><?php esc_html_e( 'Unlock', 'limit-login-attempts-reloaded' ); ?></a>
 						<?php elseif ( $user_info['unlocked'] ): ?>
-                            Unlocked
+                            <?php esc_html_e( 'Unlocked', 'limit-login-attempts-reloaded' ); ?>
 						<?php endif ?>
                 </tr>
 			<?php endforeach; ?>
@@ -154,7 +162,7 @@ if( is_array( $log ) && ! empty( $log ) ) { ?>
 
                 $.post( ajaxurl, {
                     action: 'limit-login-unlock',
-                    sec: '<?=wp_create_nonce('limit-login-unlock') ?>',
+                    sec: '<?php echo wp_create_nonce( 'llar-unlock' ) ?>',
                     ip: btn.data('ip'),
                     username: btn.data('username')
                 } )

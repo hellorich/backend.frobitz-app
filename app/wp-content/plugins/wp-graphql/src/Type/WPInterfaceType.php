@@ -2,7 +2,6 @@
 
 namespace WPGraphQL\Type;
 
-use Exception;
 use GraphQL\Type\Definition\InterfaceType;
 use WPGraphQL\Registry\TypeRegistry;
 
@@ -13,25 +12,24 @@ class WPInterfaceType extends InterfaceType {
 	/**
 	 * Instance of the TypeRegistry as an Interface needs knowledge of available Types
 	 *
-	 * @var TypeRegistry
+	 * @var \WPGraphQL\Registry\TypeRegistry
 	 */
 	public $type_registry;
 
 	/**
-	 * @var array
+	 * @var array<string,mixed>
 	 */
 	public $config;
 
 	/**
 	 * WPInterfaceType constructor.
 	 *
-	 * @param array        $config
-	 * @param TypeRegistry $type_registry
+	 * @param array<string,mixed>              $config
+	 * @param \WPGraphQL\Registry\TypeRegistry $type_registry
 	 *
-	 * @throws Exception
+	 * @throws \Exception
 	 */
 	public function __construct( array $config, TypeRegistry $type_registry ) {
-
 		$this->type_registry = $type_registry;
 
 		$this->config = $config;
@@ -39,7 +37,6 @@ class WPInterfaceType extends InterfaceType {
 		$name             = ucfirst( $config['name'] );
 		$config['name']   = apply_filters( 'graphql_type_name', $name, $config, $this );
 		$config['fields'] = function () use ( $config ) {
-
 			$fields = $config['fields'];
 
 			/**
@@ -48,11 +45,9 @@ class WPInterfaceType extends InterfaceType {
 			 * Types are still responsible for ensuring the fields resolve properly.
 			 */
 			if ( ! empty( $this->getInterfaces() ) && is_array( $this->getInterfaces() ) ) {
-
 				$interface_fields = [];
 
 				foreach ( $this->getInterfaces() as $interface_type ) {
-
 					if ( ! $interface_type instanceof InterfaceType ) {
 						$interface_type = $this->type_registry->get_type( $interface_type );
 					}
@@ -83,27 +78,27 @@ class WPInterfaceType extends InterfaceType {
 			return $fields;
 		};
 
-		$config['resolveType'] = function ( $object ) use ( $config ) {
+		$config['resolveType'] = function ( $obj ) use ( $config ) {
 			$type = null;
 			if ( is_callable( $config['resolveType'] ) ) {
-				$type = call_user_func( $config['resolveType'], $object );
+				$type = call_user_func( $config['resolveType'], $obj );
 			}
 
 			/**
 			 * Filter the resolve type method for all interfaces
 			 *
-			 * @param mixed           $type   The Type to resolve to, based on the object being resolved.
-			 * @param mixed           $object The Object being resolved.
-			 * @param WPInterfaceType $wp_interface_type   The WPInterfaceType instance.
+			 * @param mixed $type The Type to resolve to, based on the object being resolved.
+			 * @param mixed $obj  The Object being resolved.
+			 * @param \WPGraphQL\Type\WPInterfaceType $wp_interface_type The WPInterfaceType instance.
 			 */
-			return apply_filters( 'graphql_interface_resolve_type', $type, $object, $this );
+			return apply_filters( 'graphql_interface_resolve_type', $type, $obj, $this );
 		};
 
 		/**
 		 * Filter the config of WPInterfaceType
 		 *
 		 * @param array           $config Array of configuration options passed to the WPInterfaceType when instantiating a new type
-		 * @param WPInterfaceType $wp_interface_type   The instance of the WPInterfaceType class
+		 * @param \WPGraphQL\Type\WPInterfaceType $wp_interface_type The instance of the WPInterfaceType class
 		 */
 		$config = apply_filters( 'graphql_wp_interface_type_config', $config, $this );
 
@@ -113,7 +108,7 @@ class WPInterfaceType extends InterfaceType {
 	/**
 	 * Get interfaces implemented by this Interface
 	 *
-	 * @return array
+	 * @return \GraphQL\Type\Definition\InterfaceType[]
 	 */
 	public function getInterfaces(): array {
 		return $this->get_implemented_interfaces();
@@ -123,8 +118,8 @@ class WPInterfaceType extends InterfaceType {
 	 * This function sorts the fields and applies a filter to allow for easily
 	 * extending/modifying the shape of the Schema for the type.
 	 *
-	 * @param array  $fields
-	 * @param string $type_name
+	 * @param array<string,array<string,mixed>> $fields The array of fields for the object config
+	 * @param string                            $type_name
 	 *
 	 * @return mixed
 	 * @since 0.0.5
@@ -176,5 +171,4 @@ class WPInterfaceType extends InterfaceType {
 
 		return $fields;
 	}
-
 }

@@ -1,9 +1,7 @@
 <?php
 namespace WPGraphQL\Type;
 
-use Exception;
 use GraphQL\Type\Definition\InterfaceType;
-use WPGraphQL\Registry\TypeRegistry;
 
 /**
  * Trait WPInterfaceTrait
@@ -16,15 +14,11 @@ use WPGraphQL\Registry\TypeRegistry;
 trait WPInterfaceTrait {
 
 	/**
-	 * Given an array of interfaces, this gets the Interfaces the Type should implement including
-	 * inherited interfaces.
+	 * Given an array of interfaces, this gets the Interfaces the Type should implement including inherited interfaces.
 	 *
-	 * @return array
+	 * @return \GraphQL\Type\Definition\InterfaceType[]
 	 */
-	protected function get_implemented_interfaces() {
-
-		$new_interfaces = [];
-
+	protected function get_implemented_interfaces(): array {
 		if ( ! isset( $this->config['interfaces'] ) || ! is_array( $this->config['interfaces'] ) || empty( $this->config['interfaces'] ) ) {
 			$interfaces = parent::getInterfaces();
 		} else {
@@ -34,26 +28,66 @@ trait WPInterfaceTrait {
 		/**
 		 * Filters the interfaces applied to an object type
 		 *
-		 * @param array        $interfaces     List of interfaces applied to the Object Type
-		 * @param array        $config         The config for the Object Type
-		 * @param mixed|WPInterfaceType|WPObjectType $type The Type instance
+		 * @param string[]                   $interfaces     List of interfaces applied to the Object Type
+		 * @param array<string,mixed>        $config         The config for the Object Type
+		 * @param mixed|\WPGraphQL\Type\WPInterfaceType|\WPGraphQL\Type\WPObjectType $type The Type instance
 		 */
 		$interfaces = apply_filters( 'graphql_type_interfaces', $interfaces, $this->config, $this );
 
+		if ( empty( $interfaces ) || ! is_array( $interfaces ) ) {
+			return $interfaces;
+		}
+
+		$new_interfaces = [];
+
 		foreach ( $interfaces as $interface ) {
+			if ( $interface instanceof InterfaceType && $interface->name !== $this->name ) {
+				$new_interfaces[ $interface->name ] = $interface;
+				continue;
+			}
+
+			// surface when interfaces are trying to be registered with invalid configuration
 			if ( ! is_string( $interface ) ) {
+				graphql_debug(
+					sprintf(
+						// translators: %s is the name of the GraphQL type.
+						__( 'Invalid Interface registered to the "%s" Type. Interfaces can only be registered with an interface name or a valid instance of an InterfaceType', 'wp-graphql' ),
+						$this->name
+					),
+					[ 'invalid_interface' => $interface ]
+				);
+				continue;
+			}
+
+			// Prevent an interface from implementing itself
+			if ( strtolower( $this->config['name'] ) === strtolower( $interface ) ) {
+				graphql_debug(
+					sprintf(
+						// translators: %s is the name of the interface.
+						__( 'The "%s" Interface attempted to implement itself, which is not allowed', 'wp-graphql' ),
+						$interface
+					)
+				);
 				continue;
 			}
 
 			$interface_type = $this->type_registry->get_type( $interface );
 			if ( ! $interface_type instanceof InterfaceType ) {
+				graphql_debug(
+					sprintf(
+						// translators: %1$s is the name of the interface, %2$s is the name of the type.
+						__( '"%1$s" is not a valid Interface Type and cannot be implemented as an Interface on the "%2$s" Type', 'wp-graphql' ),
+						$interface,
+						$this->name
+					)
+				);
 				continue;
 			}
 
 			$new_interfaces[ $interface ] = $interface_type;
 			$interface_interfaces         = $interface_type->getInterfaces();
 
-			if ( ! is_array( $interface_interfaces ) || empty( $interface_interfaces ) ) {
+			if ( empty( $interface_interfaces ) ) {
 				continue;
 			}
 
@@ -67,7 +101,5 @@ trait WPInterfaceTrait {
 		}
 
 		return array_unique( $new_interfaces );
-
 	}
-
 }
