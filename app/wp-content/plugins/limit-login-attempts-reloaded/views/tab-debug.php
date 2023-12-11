@@ -1,10 +1,8 @@
 <?php
 
-if( !defined( 'ABSPATH' ) ) exit();
+use LLAR\Core\Helpers;
 
-/**
- * @var $this Limit_Login_Attempts
- */
+if( !defined( 'ABSPATH' ) ) exit();
 
 $debug_info = '';
 
@@ -17,7 +15,7 @@ foreach ($_SERVER as $key => $value) {
 	$ips_for_check = array_map( 'trim', explode( ',', $value ) );
 	foreach ( $ips_for_check as $ip ) {
 
-		if( $this->is_ip_valid( $ip ) ) {
+		if( Helpers::is_ip_valid( $ip ) ) {
 
 			if( !in_array( $ip, $ips ) ) {
 				$ips[] = $ip;
@@ -38,14 +36,22 @@ foreach ($_SERVER as $key => $value) {
 foreach ($server as $server_key => $ips ) {
 	$debug_info .= $server_key . ' = ' . trim( $ips, ',' ) . "\n";
 }
+
+$plugin_data = get_plugin_data( LLA_PLUGIN_FILE );
 ?>
 
 <table class="form-table">
 	<tr>
-		<th scope="row" valign="top"><?php echo __( 'Debug info', 'limit-login-attempts-reloaded' ); ?></th>
+		<th scope="row" valign="top"><?php echo __( 'Debug Info', 'limit-login-attempts-reloaded' ); ?></th>
 		<td>
 			<textarea cols="70" rows="10" onclick="this.select()" readonly><?php echo esc_textarea($debug_info); ?></textarea>
 			<p class="description"><?php _e( 'Copy the contents of the window and provide to support.', 'limit-login-attempts-reloaded' ); ?></p>
+		</td>
+	</tr>
+	<tr>
+		<th scope="row" valign="top"><?php echo __( 'Version', 'limit-login-attempts-reloaded' ); ?></th>
+		<td>
+			<div><?php echo esc_html( $plugin_data['Version'] ); ?></div>
 		</td>
 	</tr>
 </table>
