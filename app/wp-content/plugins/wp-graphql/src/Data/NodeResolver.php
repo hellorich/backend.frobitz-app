@@ -122,12 +122,22 @@ class NodeResolver {
 		 * @param string $uri The uri being searched.
 		 * @param \WPGraphQL\AppContext $content The app context.
 		 * @param \WP $wp WP object.
-		 * @param mixed|array<string,mixed>|string $extra_query_vars Any extra query vars to consider.
+		 * @param array<string,mixed>|string $extra_query_vars Any extra query vars to consider.
 		 */
 		$node = apply_filters( 'graphql_pre_resolve_uri', null, $uri, $this->context, $this->wp, $extra_query_vars );
 
 		if ( ! empty( $node ) ) {
 			return $node;
+		}
+
+		/**
+		 * Comments are embedded as a #comment-{$id} in the post's content.
+		 *
+		 * If the URI is for a comment, we can resolve it now.
+		 */
+		$comment_id = $this->maybe_parse_comment_uri( $uri );
+		if ( null !== $comment_id ) {
+			return $this->context->get_loader( 'comment' )->load_deferred( $comment_id );
 		}
 
 		/**
@@ -155,11 +165,11 @@ class NodeResolver {
 		 *
 		 * This can be used by Extensions which use a different query class to resolve data.
 		 *
-		 * @param class-string          $query_class The query class used to resolve the URI. Defaults to WP_Query.
-		 * @param ?string               $uri The uri being searched.
-		 * @param \WPGraphQL\AppContext $content The app context.
-		 * @param \WP                   $wp WP object.
-		 * @param mixed|array|string    $extra_query_vars Any extra query vars to consider.
+		 * @param class-string               $query_class The query class used to resolve the URI. Defaults to WP_Query.
+		 * @param ?string                    $uri The uri being searched.
+		 * @param \WPGraphQL\AppContext      $content The app context.
+		 * @param \WP                        $wp WP object.
+		 * @param array<string,mixed>|string $extra_query_vars Any extra query vars to consider.
 		 */
 		$query_class = apply_filters( 'graphql_resolve_uri_query_class', 'WP_Query', $uri, $this->context, $this->wp, $extra_query_vars );
 
@@ -202,7 +212,7 @@ class NodeResolver {
 		 * @param \WP_Query                                     $query            The query object.
 		 * @param \WPGraphQL\AppContext                         $content          The app context.
 		 * @param \WP                                           $wp               WP object.
-		 * @param mixed|array|string                            $extra_query_vars Any extra query vars to consider.
+		 * @param array<string,mixed>|string                    $extra_query_vars Any extra query vars to consider.
 		 */
 		$node = apply_filters( 'graphql_resolve_uri', null, $uri, $queried_object, $query, $this->context, $this->wp, $extra_query_vars );
 
@@ -297,7 +307,7 @@ class NodeResolver {
 		 * @param \WP_Query                                     $query            The query object.
 		 * @param \WPGraphQL\AppContext                         $content          The app context.
 		 * @param \WP                                           $wp               WP object.
-		 * @param mixed|array|string                            $extra_query_vars Any extra query vars to consider.
+		 * @param array<string,mixed>|string                    $extra_query_vars Any extra query vars to consider.
 		 */
 		return apply_filters( 'graphql_post_resolve_uri', $node, $uri, $queried_object, $query, $this->context, $this->wp, $extra_query_vars );
 	}
@@ -593,7 +603,7 @@ class NodeResolver {
 		/**
 		 * Filters the array of parsed query variables.
 		 *
-		 * @param array $query_vars The array of requested query variables.
+		 * @param array<string,mixed> $query_vars The array of requested query variables.
 		 *
 		 * @since 2.1.0
 		 */
@@ -645,5 +655,22 @@ class NodeResolver {
 
 		// We dont have an 'Archive' type, so we resolve to the ContentType.
 		return $this->context->get_loader( 'post_type' )->load_deferred( 'post' );
+	}
+
+	/**
+	 * Checks if the URI is a comment URI and, if so, returns the comment ID.
+	 *
+	 * @param string $uri The URI to check.
+	 */
+	protected function maybe_parse_comment_uri( string $uri ): ?int {
+		$comment_match = [];
+		// look for a #comment-{$id} anywhere in the uri.
+		if ( preg_match( '/#comment-(\d+)/', $uri, $comment_match ) ) {
+			$comment_id = isset( $comment_match[1] ) ? absint( $comment_match[1] ) : null;
+
+			return ! empty( $comment_id ) ? $comment_id : null;
+		}
+
+		return null;
 	}
 }
