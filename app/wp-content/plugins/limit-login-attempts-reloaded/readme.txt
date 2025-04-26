@@ -1,10 +1,11 @@
-=== Limit Login Attempts Reloaded ===
+=== Limit Login Attempts Reloaded - Login Security, Brute Force Protection, Firewall ===
 Contributors: wpchefgadget
 Donate link: https://www.paypal.com/donate?hosted_button_id=FKD4MYFCMNVQQ
-Tags: brute force, login, security, firewall, protection
+Tags: brute force, login security, security, firewall, spam
+License: GPLv2 or later
 Requires at least: 3.0
-Tested up to: 6.4
-Stable tag: 2.26.7
+Tested up to: 6.7
+Stable tag: 2.26.18
 
 Block excessive login attempts and protect your site against brute force attacks. Simple, yet powerful tools to improve site performance.
 
@@ -12,11 +13,11 @@ Block excessive login attempts and protect your site against brute force attacks
 
 <a href="https://www.limitloginattempts.com">Limit Login Attempts Reloaded</a> functions as a robust deterrent against <a href="https://www.limitloginattempts.com/cracking-the-code-unveiling-the-mechanics-behind-brute-force-attacks/">brute force attacks</a>, bolstering your website's security measures and optimizing its performance. It achieves this by **restricting the number of login attempts allowed**. This applies not only to the standard login method, but also to XMLRPC, Woocommerce, and custom login pages. With more than 2.5 million active users, this plugin fulfills all your login security requirements.
 
-The plugin functions by automatically preventing further attempts from a particular Internet Protocol (IP) address and/or username once a predetermined limit of retries has been surpassed. This significantly weakens the effectiveness of brute force attacks on your website. 
+The plugin functions by automatically preventing further attempts from a particular Internet Protocol (IP) address and/or username once a predetermined limit of retries has been surpassed. This significantly weakens the effectiveness of brute force attacks on your website.
 
 By default, WordPress permits an unlimited number of login attempts, posing a vulnerability where passwords can be easily deciphered through brute force methods.
 
-**Limit Login Attempts Reloaded Premium (Try For 7 Days)**
+**Limit Login Attempts Reloaded Premium (Try Free with <a href="https://www.limitloginattempts.com/premium-security-zero-cost-discover-the-benefits-of-micro-cloud/">Micro Cloud</a>)**
 Upgrade to <a href="https://www.limitloginattempts.com/plans/">Limit Login Attempts Reloaded Premium</a> to extend cloud-based protection to the Limit Login Attempts Reloaded plugin, thereby enhancing your login security. The premium version includes a range of highly beneficial features, including <a href="https://www.limitloginattempts.com/features/ip-intelligence/">IP intelligence</a> to **detect, counter and deny malicious login attempts**. Your <a href="https://www.limitloginattempts.com/failed-login-attempts-in-wordpress/">failed login attempts</a> will be safely neutralized in the cloud so your website can function at its optimal performance during an attack. 
 
 https://www.youtube.com/watch?v=JfkvIiQft14
@@ -28,14 +29,17 @@ https://www.youtube.com/watch?v=JfkvIiQft14
 * **Lockout Email Notifications** - Informs the admin via email of lockouts. 
 * **Denied Attempt Logs** - View a log of all denied attempts and lockouts. 
 * **IP & Username Safelist/Denylist** - Control access to usernames and IPs. 
+* **New User Registration Protection (Micro Cloud Accounts)** - Protects default WP registration. 
 * **Sucuri** compatibility.
 * **Wordfence** compatibility.
 * **Ultimate Member** compatibility.
+* **WPS Hide Login** compatibility.
 * **XMLRPC** gateway protection.
 * **Woocommerce** login page protection.
 * **Multi-site compatibility** with extra MU settings.
 * **GDPR** compliant.
 * **Custom IP origins support** (Cloudflare, Sucuri, etc.).
+* **llar_admin** own capability.
 
 = Features (Premium Version): =
 * **Performance Optimizer** - Offload the burden of excessive failed logins from your server to protect your server resources, resulting in improved speed and efficiency of your website.
@@ -43,11 +47,13 @@ https://www.youtube.com/watch?v=JfkvIiQft14
 * **Enhanced Throttling** - Longer lockout intervals each time a malicious IP or username tries to login unsuccessfully.
 * **Deny By Country** - <a href="https://www.limitloginattempts.com/block-logins-by-country-in-wordpress/">Block logins by country</a> by simply selecting the countries you want to deny.
 * **Auto IP Denylist** - Automatically add IP addresses to your active cloud deny list that repeatedly fail login attempts. 
+* **New User Registration Protection** - Protects default WP registration. 
 * **Global Denylist Protection** - Utilize our active cloud IP data from thousands of websites in the LLAR network. 
 * **Synchronized Lockouts** -  Lockout IP data can be shared between multiple domains for enhanced protection in your network.
 * **Synchronized Safelist/Denylist** - Safelist/Denylist IP and username data can be shared between multiple domains.
 * **Premium Support** - Email support with a security tech.  
-* **Auto Backups of All IP Data** - Store your active IP data in the cloud. 
+* **Auto Backups of All IP Data** - Store your active IP data in the cloud.
+* **Successful Logins Log** - Store successful logins in the cloud including IP info, city, state and lat/long. 
 * **Enhanced lockout logs** - Gain valuable insights into the origins of IPs that are attempting logins.
 * **CSV Download of IP Data** - Download IP data direclty from the cloud. 
 * **Supports IPV6 Ranges For Safelist/Denylist** 
@@ -58,8 +64,8 @@ https://www.youtube.com/watch?v=JfkvIiQft14
 
 = Upgrading from the old Limit Login Attempts plugin? =
 1. Go to the Plugins section in your site's backend.
-1. Remove the Limit Login Attempts plugin.
-1. Install the Limit Login Attempts Reloaded plugin.
+2. Remove the Limit Login Attempts plugin.
+3. Install the Limit Login Attempts Reloaded plugin.
 
 All your settings will be kept intact!
 
@@ -83,7 +89,12 @@ Limit Login Attempts Reloaded™ is a trademark of Atlantic Silicon Inc. When wr
 
 1. Login screen after a failed login with remaining retries
 2. Lockout login screen
-3. Administration interface in WordPress 5.2.1
+3. LLAR Dashboard
+4. Plugin App Settings
+5. Plugin General Settings
+6. Login Firewall & Login Access Rules
+7. Debug
+8. Support
 
 == Frequently Asked Questions ==
 
@@ -134,6 +145,57 @@ The settings are explained within the plugin in great detail. If you are unsure,
 By default, you will need to copy and paste the lists to each site manually. For the <a href="https://www.limitloginattempts.com/plans/?from=wp-details">premium service</a>, sites are grouped within the same private cloud account. Each site within that group can be configured if it shares its lockouts and access lists with other group members. The setting is located in the plugin's interface. The default options are recommended.
 
 == Changelog ==
+
+= 2.26.18 =
+* Better displaying IPv6 in the log.
+
+= 2.26.17 =
+* Added default registration protection for cloud accounts (free and paid).
+
+= 2.26.16 =
+* Fixed GDPR message issue for some themes.
+
+= 2.26.15 =
+* Fixed translation compatibility with WordPress 6.7.
+* Fixed GDPR message on the Woocommerce login page.
+* Fix: load login-page-styles.css (on wp-login.php) only if it is necessary (thanks to georgejipa).
+* CSS fixes.
+
+= 2.26.14 =
+* Improved compatibility with custom login pages, including WooCommerce and UltimateMember.
+* Standardized display of login messages.
+* A new Custom Error Message setting is added. The message is being appended to all asynchronous messages.
+* Fixed translation compatibility with WordPress 6.7.
+* CSS fixes.
+
+= 2.26.13 =
+* New "llar_admin" capability added to let other roles access the plugin.
+* CSS fixes.
+* Sticky headers added to the log tables.
+* Small interface changes.
+
+= 2.26.12 =
+* Better displaying IPv6 in successful login attempts block.
+* Possible intersections in tabs with other plugins fixed.
+* PHP 8, 9 compatibility updates.
+* Refactoring.
+
+= 2.26.11 =
+* Fixed possible style conflicts related to tables.
+* Fixed possible PHP warnings.
+* Fixed some I18N issues, thanks to alexclassroom!
+* Better displaying multiple roles in login logs.
+
+= 2.26.10 =
+* Log of successful login attempts implemented for Micro Cloud (Free) and Premium users.
+* Checklist of recommended actions implemented.
+* Settings page reorganized.
+
+= 2.26.9 =
+* Chart library updated.
+
+= 2.26.8 =
+* Fixed possible WooCommerce conflict.
 
 = 2.26.7 =
 * Better informing on Micro Cloud.

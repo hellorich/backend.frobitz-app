@@ -4,6 +4,7 @@ namespace WPGraphQL\Registry;
 
 use GraphQL\Error\Error;
 use GraphQL\Type\Definition\Type;
+use WPGraphQL;
 use WPGraphQL\Data\DataSource;
 use WPGraphQL\Mutation\CommentCreate;
 use WPGraphQL\Mutation\CommentDelete;
@@ -53,6 +54,7 @@ use WPGraphQL\Type\Enum\PostObjectsConnectionDateColumnEnum;
 use WPGraphQL\Type\Enum\PostObjectsConnectionOrderbyEnum;
 use WPGraphQL\Type\Enum\PostStatusEnum;
 use WPGraphQL\Type\Enum\RelationEnum;
+use WPGraphQL\Type\Enum\ScriptLoadingGroupLocationEnum;
 use WPGraphQL\Type\Enum\ScriptLoadingStrategyEnum;
 use WPGraphQL\Type\Enum\TaxonomyEnum;
 use WPGraphQL\Type\Enum\TaxonomyIdTypeEnum;
@@ -133,6 +135,10 @@ use WPGraphQL\Utils\Utils;
  *
  * This class maintains the registry of Types used in the GraphQL Schema
  *
+ * @phpstan-import-type InputObjectConfig from \GraphQL\Type\Definition\InputObjectType
+ * @phpstan-import-type InterfaceConfig from \GraphQL\Type\Definition\InterfaceType
+ * @phpstan-import-type ObjectConfig from \GraphQL\Type\Definition\ObjectType
+ *
  * @package WPGraphQL\Registry
  */
 class TypeRegistry {
@@ -143,7 +149,6 @@ class TypeRegistry {
 	 * @var array<string,mixed>
 	 */
 	protected $types;
-
 
 	/**
 	 * The loaders needed to register types
@@ -170,7 +175,6 @@ class TypeRegistry {
 	 * @var string[]
 	 */
 	protected $excluded_types = null;
-
 
 	/**
 	 * Stores a list of mutation names that should be excluded from the schema, along with their generated input and payload types.
@@ -357,6 +361,7 @@ class TypeRegistry {
 		PostStatusEnum::register_type();
 		RelationEnum::register_type();
 		ScriptLoadingStrategyEnum::register_type();
+		ScriptLoadingGroupLocationEnum::register_type();
 		TaxonomyEnum::register_type();
 		TaxonomyIdTypeEnum::register_type();
 		TermNodeIdTypeEnum::register_type();
@@ -372,9 +377,10 @@ class TypeRegistry {
 		PostObjectsConnectionOrderbyInput::register_type();
 		UsersConnectionOrderbyInput::register_type();
 
-		MenuItemObjectUnion::register_type( $this );
-		PostObjectUnion::register_type( $this );
-		TermObjectUnion::register_type( $this );
+		// Deprecated types.
+		MenuItemObjectUnion::register_type( $this ); /* @phpstan-ignore staticMethod.deprecatedClass */
+		PostObjectUnion::register_type( $this ); /* @phpstan-ignore staticMethod.deprecatedClass */
+		TermObjectUnion::register_type( $this ); /* @phpstan-ignore staticMethod.deprecatedClass */
 
 		/**
 		 * Register core connections
@@ -409,10 +415,10 @@ class TypeRegistry {
 		 *
 		 * @var \WP_Post_Type[] $allowed_post_types
 		 */
-		$allowed_post_types = \WPGraphQL::get_allowed_post_types( 'objects' );
+		$allowed_post_types = WPGraphQL::get_allowed_post_types( 'objects' );
 
 		/** @var \WP_Taxonomy[] $allowed_taxonomies */
-		$allowed_taxonomies = \WPGraphQL::get_allowed_taxonomies( 'objects' );
+		$allowed_taxonomies = WPGraphQL::get_allowed_taxonomies( 'objects' );
 
 		foreach ( $allowed_post_types as $post_type_object ) {
 			PostObject::register_types( $post_type_object );
@@ -716,7 +722,7 @@ class TypeRegistry {
 			return $this->prepare_type( $type_name, $config );
 		};
 
-		if ( is_array( $config ) && isset( $config['eagerlyLoadType'] ) && true === $config['eagerlyLoadType'] && ! isset( $this->eager_type_map[ $this->format_key( $type_name ) ] ) ) {
+		if ( WPGraphQL::is_introspection_query() && is_array( $config ) && isset( $config['eagerlyLoadType'] ) && true === $config['eagerlyLoadType'] && ! isset( $this->eager_type_map[ $this->format_key( $type_name ) ] ) ) {
 			$this->eager_type_map[ $this->format_key( $type_name ) ] = $this->format_key( $type_name );
 		}
 	}
@@ -787,19 +793,14 @@ class TypeRegistry {
 	}
 
 	/**
-	 * @param string                                                  $type_name The name of the type to register
-	 * @param mixed|array<string,mixed>|\GraphQL\Type\Definition\Type $config he configuration of the type
+	 * Prepare the type for registration.
 	 *
-	 * @return mixed|array<string,mixed>|\GraphQL\Type\Definition\Type|null
-	 * @throws \Exception
+	 * @param string                                                  $type_name The name of the type to prepare
+	 * @param mixed|array<string,mixed>|\GraphQL\Type\Definition\Type $config    The config for the type
+	 *
+	 * @return mixed|\GraphQL\Type\Definition\Type|null The prepared type
 	 */
-	public function prepare_type( string $type_name, $config ) {
-		/**
-		 * Uncomment to help trace eagerly (not lazy) loaded types.
-		 *
-		 * Use: graphql_debug( "prepare_type: {$type_name}", [ 'type' => $type_name ] );.
-		 */
-
+	protected function prepare_type( string $type_name, $config ) {
 		if ( ! is_array( $config ) ) {
 			return $config;
 		}
@@ -815,6 +816,7 @@ class TypeRegistry {
 					$prepared_type = new WPEnumType( $config );
 					break;
 				case 'input':
+					/** @var InputObjectConfig $config */
 					$prepared_type = new WPInputObjectType( $config, $this );
 					break;
 				case 'scalar':
@@ -824,10 +826,12 @@ class TypeRegistry {
 					$prepared_type = new WPUnionType( $config, $this );
 					break;
 				case 'interface':
+					/** @var InterfaceConfig $config */
 					$prepared_type = new WPInterfaceType( $config, $this );
 					break;
 				case 'object':
 				default:
+					/** @var ObjectConfig $config */
 					$prepared_type = new WPObjectType( $config, $this );
 			}
 		}
@@ -884,7 +888,7 @@ class TypeRegistry {
 	 * @param array<string,mixed> $fields    Array of fields and their settings to register on a Type
 	 * @param string              $type_name Name of the Type to register the fields to
 	 *
-	 * @return array<string,array<string,mixed>>
+	 * @return array<string,mixed>
 	 * @throws \Exception
 	 */
 	public function prepare_fields( array $fields, string $type_name ): array {
@@ -1010,9 +1014,9 @@ class TypeRegistry {
 	 * Processes type modifiers (e.g., "non-null"). Loads types immediately, so do
 	 * not call before types are ready to be loaded.
 	 *
-	 * @param mixed|string|array<string,mixed> $type The type definition to process.
+	 * @param \GraphQL\Type\Definition\Type|string|array<string,mixed> $type The type definition to process.
 	 *
-	 * @return \GraphQL\Type\Definition\Type|string|array<string,mixed>|mixed
+	 * @return \GraphQL\Type\Definition\Type|string|array<string,mixed>
 	 * @throws \Exception
 	 */
 	public function setup_type_modifiers( $type ) {
@@ -1021,15 +1025,16 @@ class TypeRegistry {
 		}
 
 		if ( isset( $type['non_null'] ) ) {
-			return $this->non_null(
-				$this->setup_type_modifiers( $type['non_null'] )
-			);
+			/** @var \GraphQL\Type\Definition\Type $inner_type */
+			$inner_type = $this->setup_type_modifiers( $type['non_null'] );
+
+			return $this->non_null( $inner_type );
 		}
 
 		if ( isset( $type['list_of'] ) ) {
-			return $this->list_of(
-				$this->setup_type_modifiers( $type['list_of'] )
-			);
+			/** @var \GraphQL\Type\Definition\Type $inner_type */
+			$inner_type = $this->setup_type_modifiers( $type['list_of'] );
+			return $this->list_of( $inner_type );
 		}
 
 		return $type;
@@ -1089,7 +1094,28 @@ class TypeRegistry {
 					return $fields;
 				}
 
+				// if a field has already been registered with the same name output a debug message
 				if ( isset( $fields[ $field_name ] ) ) {
+
+					// if the existing field is a connection type
+					// and the new field is also a connection type
+					// and the toType is the same for both
+					// then we can allow the duplicate field
+					if (
+						isset(
+							$fields[ $field_name ]['isConnectionField'],
+							$config['isConnectionField'],
+							$fields[ $field_name ]['toType'],
+							$config['toType'],
+							$fields[ $field_name ]['connectionTypeName'],
+							$config['connectionTypeName']
+						) &&
+						$fields[ $field_name ]['toType'] === $config['toType'] &&
+						$fields[ $field_name ]['connectionTypeName'] === $config['connectionTypeName']
+					) {
+						return $fields;
+					}
+
 					graphql_debug(
 						sprintf(
 							// translators: %1$s is the field name, %2$s is the type name.
@@ -1098,9 +1124,11 @@ class TypeRegistry {
 							$type_name
 						),
 						[
-							'type'       => 'DUPLICATE_FIELD',
-							'field_name' => $field_name,
-							'type_name'  => $type_name,
+							'type'            => 'DUPLICATE_FIELD',
+							'field_name'      => $field_name,
+							'type_name'       => $type_name,
+							'existing_field'  => $fields[ $field_name ],
+							'duplicate_field' => $config,
 						]
 					);
 					return $fields;
@@ -1227,16 +1255,16 @@ class TypeRegistry {
 	}
 
 	/**
-	 * Given a Type, this returns an instance of a NonNull of that type
+	 * Given a Type, this returns an instance of a NonNull of that type.
 	 *
-	 * @param string|callable|\GraphQL\Type\Definition\NullableType $type The Type being wrapped
+	 * @param \GraphQL\Type\Definition\Type|string $type The Type being wrapped.
 	 *
-	 * @return \GraphQL\Type\Definition\NonNull
+	 * @phpstan-template T of \GraphQL\Type\Definition\NullableType&\GraphQL\Type\Definition\Type
+	 * @phpstan-param T|string $type The Type being wrapped
 	 */
-	public function non_null( $type ) {
+	public function non_null( $type ): \GraphQL\Type\Definition\NonNull {
 		if ( is_string( $type ) ) {
 			$type_def = $this->get_type( $type );
-
 			return Type::nonNull( $type_def );
 		}
 
@@ -1244,21 +1272,24 @@ class TypeRegistry {
 	}
 
 	/**
-	 * Given a Type, this returns an instance of a listOf of that type
+	 * Given a Type, this returns an instance of a listOf of that type.
 	 *
-	 * @param string|\GraphQL\Type\Definition\Type $type The Type being wrapped
+	 * @param \GraphQL\Type\Definition\Type|string $type The Type being wrapped.
 	 *
-	 * @return \GraphQL\Type\Definition\ListOfType
+	 * @phpstan-template T of \GraphQL\Type\Definition\Type
+	 * @phpstan-param T|string $type The Type being wrapped.
+	 * @phpstan-return \GraphQL\Type\Definition\ListOfType<T>
 	 */
-	public function list_of( $type ) {
+	public function list_of( $type ): \GraphQL\Type\Definition\ListOfType {
 		if ( is_string( $type ) ) {
-			$type_def = $this->get_type( $type );
+			$resolved_type = $this->get_type( $type );
 
-			if ( is_null( $type_def ) ) {
-				return Type::listOf( Type::string() );
+			if ( is_null( $resolved_type ) ) {
+				$resolved_type = Type::string();
 			}
 
-			return Type::listOf( $type_def );
+			/** @phpstan-var T $resolved_type */
+			$type = $resolved_type;
 		}
 
 		return Type::listOf( $type );
