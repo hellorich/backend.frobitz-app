@@ -12,6 +12,7 @@ $countries_list = Helpers::get_countries_list();
         <h3 class="title_page">
             <img src="<?php echo LLA_PLUGIN_URL ?>assets/css/images/icon-filter.png">
             <?php _e( 'Country Access Rules', 'limit-login-attempts-reloaded' ); ?>
+            <span><?php _e( 'To block all countries but your own add your country as Allow Only rule', 'limit-login-attempts-reloaded' ); ?></span>
         </h3>
     </div>
     <div class="llar-preloader-wrap">
@@ -51,8 +52,8 @@ $countries_list = Helpers::get_countries_list();
 				    const rule = response.data.rule || 'deny';
 
 				    $('.llar-block-country-mode').prepend(`<select class="input_border">
-                        <option value="deny"`+(rule === 'deny' ? 'selected' : '')+`>Deny</option>
-                        <option value="allow"`+(rule === 'allow' ? 'selected' : '')+`>Allow only</option>
+                        <option value="deny"`+(rule === 'deny' ? 'selected' : '')+`><?php esc_html_e( 'Deny', 'limit-login-attempts-reloaded' ); ?></option>
+                        <option value="allow"`+(rule === 'allow' ? 'selected' : '')+`><?php esc_html_e( 'Allow only', 'limit-login-attempts-reloaded' ); ?></option>
                     </select>`);
 
 					let selected_countries = '';
